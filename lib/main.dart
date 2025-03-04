@@ -2,6 +2,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:mental_ease/user/Providers/Auth_Provider/SignUp_Provider.dart';
 import 'package:mental_ease/user/Providers/Auth_Provider/login_Provider.dart';
+import 'package:mental_ease/user/Providers/Dashboard_Provider/Dashboard_Provider.dart';
+import 'package:mental_ease/user/Providers/Profile_Provider/Profile_Provider.dart';
 import 'package:provider/provider.dart';
 
 import 'SplashScreen.dart';
@@ -13,6 +15,8 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => SignupProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
+        ChangeNotifierProvider(create: (_) => UserProfileProvider())
       ],
       child: const MyApp(),
     ),
@@ -33,9 +37,14 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: SplachScreen(),
+    return SafeArea(
+      child: MaterialApp(
+        theme: ThemeData(
+          fontFamily: "CustomFont", // Apply font globally
+        ),
+        debugShowCheckedModeBanner: false,
+        home: SplachScreen(),
+      ),
     );
   }
 }

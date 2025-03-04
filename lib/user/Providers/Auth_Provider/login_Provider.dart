@@ -48,7 +48,7 @@ class AuthProvider with ChangeNotifier {
   void _navigateToRolePage(BuildContext context, String role) {
     if (role == "user") {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
-        return Userdashboard();
+        return HomeScreen();
       },),  (Route<dynamic> route) => false,);
     } else if (role == "Psychologist") {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {

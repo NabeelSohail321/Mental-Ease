@@ -30,12 +30,23 @@ class SignupProvider with ChangeNotifier {
       String uid = userCredential.user!.uid;
 
       // Save user data to Firebase Realtime Database
-      await _database.child(uid).set({
-        "username": username,
-        "email": email,
-        "uid": uid,
-        "role": role
-      });
+      if(role == 'user'){
+        await _database.child(uid).set({
+          "username": username,
+          "email": email,
+          "uid": uid,
+          "role": role
+        });
+      }else if (role == 'Psychologist'){
+        await _database.child(uid).set({
+          "username": username,
+          "email": email,
+          "uid": uid,
+          "role": role,
+          "isListed": false,
+          "isVerfied": false,
+        });
+      }
 
       // Show success message and navigate
       ScaffoldMessenger.of(context).showSnackBar(

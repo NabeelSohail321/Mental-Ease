@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:mental_ease/user/Sign_Up.dart';
 import 'package:provider/provider.dart';
 
 import 'Providers/Auth_Provider/login_Provider.dart';
@@ -54,23 +55,19 @@ class LoginPageState extends State<LoginPage> {
                 ),
               ),
               // AppBar content
-              AppBar(
-                title: Text(''),
-                centerTitle: true,
-                backgroundColor: Colors.transparent, // Transparent to show background
-                elevation: 0, // Remove shadow for a clean look
-              ),
+
               // Text at the bottom of the AppBar
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 25), // Add some spacing
+                  padding:  EdgeInsets.only(bottom: 18), // Add some spacing
                   child: RichText(
                     text: TextSpan(
                       children: [
                         TextSpan(
                           text: 'Welcome ',
                           style: TextStyle(
+                            fontFamily: 'CustomFont',
                             color: Color(0xFF006064),
                             fontSize: 30,
                           ),
@@ -78,6 +75,7 @@ class LoginPageState extends State<LoginPage> {
                         TextSpan(
                           text: 'Back!',
                           style: TextStyle(
+                            fontFamily: 'CustomFont',
                             color: Colors.black,
                             fontSize: 30,
                           ),
@@ -126,7 +124,9 @@ class LoginPageState extends State<LoginPage> {
                   TextFormField(
                     controller: emailController,
                     decoration: InputDecoration(
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(15)),
+                      ),
                       labelText: 'Email',
                     ),
                     keyboardType: TextInputType.emailAddress,
@@ -139,7 +139,7 @@ class LoginPageState extends State<LoginPage> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 30),
+                  SizedBox(height: 10),
                   Text(
                     'Password',
                     style: TextStyle(
@@ -152,7 +152,7 @@ class LoginPageState extends State<LoginPage> {
                     controller: passwordController,
                     obscureText: !isPasswordVisible,
                     decoration: InputDecoration(
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(15)),),
                       labelText: 'Password',
                       suffixIcon: IconButton(
                         onPressed: () {
@@ -198,7 +198,9 @@ class LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(36),
                         ),
                       ),
-                      child: LoginProvider.isLoading? CircularProgressIndicator(): Text(
+                      child: LoginProvider.isLoading? CircularProgressIndicator(
+                        color: Colors.white,
+                      ): Text(
                         'Login',
                         style: TextStyle(
                           fontSize: 20,
@@ -206,7 +208,14 @@ class LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) {
+                        return SignUpPage();
+                      }));
+                    },
+                    child: Text("Don't Have an Account? Sign up",style: TextStyle(color: Color(0xFF006064)),),
+                  ),
                 ],
               ),
             ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:mental_ease/user/Login.dart';
 
 import 'user/Sign_Up.dart';
 
@@ -16,10 +17,10 @@ class _SplachScreenState extends State<SplachScreen> {
   void initState() {
     super.initState();
 
-    Timer(Duration(seconds: 5), (){
+    Timer(Duration(seconds: 3), (){
       Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => SignUpPage())
+          MaterialPageRoute(builder: (context) => LoginPage())
       );
     }
     );

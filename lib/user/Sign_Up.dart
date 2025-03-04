@@ -56,13 +56,14 @@ class SignUpPageState extends State<SignUpPage> {
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 25),
+                  padding:  EdgeInsets.only(bottom: 18),
                   child: RichText(
                     text: TextSpan(
                       children: [
                         TextSpan(
                           text: 'Create ',
                           style: TextStyle(
+                            fontFamily: 'CustomFont',
                             color: Color(0xFF006064),
                             fontSize: 30,
                           ),
@@ -70,6 +71,7 @@ class SignUpPageState extends State<SignUpPage> {
                         TextSpan(
                           text: 'an ',
                           style: TextStyle(
+                            fontFamily: 'CustomFont',
                             color: Color(0xFF006064),
                             fontSize: 30,
                           ),
@@ -77,6 +79,7 @@ class SignUpPageState extends State<SignUpPage> {
                         TextSpan(
                           text: 'Account',
                           style: TextStyle(
+                            fontFamily: 'CustomFont',
                             color: Colors.black,
                             fontSize: 30,
                           ),
@@ -117,7 +120,6 @@ class SignUpPageState extends State<SignUpPage> {
                   _buildPasswordField("Password", "password", passwordController),
                   _buildPasswordField("Confirm Password", "Confirm password", confirmpasswordController, isConfirm: true),
 
-                  SizedBox(height: 20),
 
                   // Role selection
                   Text("Select Role", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -172,7 +174,7 @@ class SignUpPageState extends State<SignUpPage> {
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(36)),
                         ),
-                        child: Signupprovider.isLoading ? CircularProgressIndicator() : Text('Sign Up', style: TextStyle(fontSize: 20)),
+                        child: Signupprovider.isLoading ? CircularProgressIndicator(color: Colors.white,) : Text('Sign Up', style: TextStyle(fontSize: 20)),
                       ),
                     ),
                   ),
@@ -183,7 +185,7 @@ class SignUpPageState extends State<SignUpPage> {
                         return LoginPage();
                       }));
                     },
-                    child: Text("Already Have an Account? Login"),
+                    child: Text("Already Have an Account? Login",style: TextStyle(color: Color(0xFF006064)),),
                   )
                 ],
               ),
@@ -205,7 +207,7 @@ class SignUpPageState extends State<SignUpPage> {
           TextFormField(
             controller: controller,
             keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
-            decoration: InputDecoration(border: OutlineInputBorder(), labelText: hint),
+            decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(15)),), labelText: hint),
             validator: (value) {
               if (value == null || value.isEmpty) return '$label cannot be empty';
               if (isEmail && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return "Enter a valid email address";
@@ -229,7 +231,7 @@ class SignUpPageState extends State<SignUpPage> {
             controller: controller,
             obscureText: isConfirm ? !isConfirmPasswordVisible : !isPasswordVisible,
             decoration: InputDecoration(
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(15)),),
               labelText: hint,
               suffixIcon: IconButton(
                 onPressed: () {
