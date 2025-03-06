@@ -2,6 +2,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:mental_ease/user/UserDashboard.dart';
+import 'package:provider/provider.dart';
+
+import '../../../Phycologist/Phycologist_dashboard.dart';
+import '../../Login.dart';
+import '../Profile_Provider/Profile_Provider.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -9,9 +14,21 @@ class AuthProvider with ChangeNotifier {
 
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isLoggedIn = false;
+
+  bool get isLoggedIn => _isLoggedIn;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  AuthProvider(){
+    _checkLoginStatus();
+  }
+
+  void _checkLoginStatus() {
+    _isLoggedIn = _auth.currentUser != null;
+    notifyListeners();
+  }
 
   Future<void> loginUser(BuildContext context, String email, String password) async {
     _isLoading = true;
@@ -20,6 +37,8 @@ class AuthProvider with ChangeNotifier {
 
     try {
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      _isLoggedIn = true; // Update state
+      notifyListeners();
       String uid = userCredential.user!.uid;
 
       // Fetch role from Realtime Database
@@ -52,7 +71,7 @@ class AuthProvider with ChangeNotifier {
       },),  (Route<dynamic> route) => false,);
     } else if (role == "Psychologist") {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
-        return Userdashboard();
+        return phycologistHomeScreen();
       },),  (Route<dynamic> route) => false,);
     } else if (role == "Admin") {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
@@ -82,5 +101,19 @@ class AuthProvider with ChangeNotifier {
       default:
         return 'Login failed. Please try again.';
     }
+  }
+  Future<void> signOut(BuildContext context) async {
+    await _auth.signOut().then((value){
+
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+            (_) => false, // Remove all previous routes
+      );
+    });
+    _isLoggedIn = false;
+    notifyListeners();
+
   }
 }

@@ -6,6 +6,7 @@ import 'package:mental_ease/user/Providers/Dashboard_Provider/Dashboard_Provider
 import 'package:mental_ease/user/Providers/Profile_Provider/Profile_Provider.dart';
 import 'package:provider/provider.dart';
 
+import 'Phycologist/Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
 import 'SplashScreen.dart';
 import 'firebase_options.dart';
 
@@ -16,7 +17,10 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => SignupProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
-        ChangeNotifierProvider(create: (_) => UserProfileProvider())
+        ChangeNotifierProvider(create: (_) => UserProfileProvider()),
+        ChangeNotifierProvider(create: (_) => PsychologistProvider()),
+        ChangeNotifierProvider(create: (_) => PsychologistProfileProvider())
+
       ],
       child: const MyApp(),
     ),

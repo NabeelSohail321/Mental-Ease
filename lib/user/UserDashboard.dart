@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
+import 'Login.dart';
 import 'Profile.dart';
+import 'Providers/Auth_Provider/login_Provider.dart';
 import 'Providers/Dashboard_Provider/Dashboard_Provider.dart';
+import 'Providers/Profile_Provider/Profile_Provider.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -55,14 +58,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   @override
   Widget build(BuildContext context) {
-    return PersistentTabView(
-      context,
-      controller: _controller,
-      screens: _buildScreens(),
-      items: _navBarsItems(),
-      backgroundColor: Colors.white,
-      navBarStyle: NavBarStyle.style1, // Choose the desired style
-      navBarHeight: MediaQuery.of(context).size.height*0.1,
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        // If user is not logged in, show login screen
+        if (!authProvider.isLoggedIn) {
+          return LoginPage(); // Redirect to Login Screen
+        }
+
+        // Show Persistent Bottom Nav Bar if user is logged in
+        return PersistentTabView(
+          context,
+          controller: _controller,
+          screens: _buildScreens(),
+          items: _navBarsItems(),
+          backgroundColor: Colors.white,
+          navBarStyle: NavBarStyle.style1,
+          popBehaviorOnSelectedNavBarItemPress: PopBehavior.all,
+        );
+      },
     );
   }
 }

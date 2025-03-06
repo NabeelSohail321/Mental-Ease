@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:mental_ease/user/Login.dart';
+import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
 import '../Dashboard_Provider/Dashboard_Provider.dart';
@@ -16,9 +17,16 @@ class UserProfileProvider with ChangeNotifier {
   String? _email;
   bool _isLoading = false;
 
+
   String? get userName => _userName;
   String? get email => _email;
   bool get isLoading => _isLoading;
+
+
+
+
+
+
 
   // Fetch user data from Firebase Realtime Database
   Future<void> getUserInfo() async {
@@ -88,11 +96,5 @@ class UserProfileProvider with ChangeNotifier {
   }
 
   // Logout user
-  Future<void> signOut(BuildContext context) async {
-    await _auth.signOut().then((value){
-      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
-        return LoginPage();
-      },), (Route<dynamic> route) => false);
-    });
-  }
+
 }

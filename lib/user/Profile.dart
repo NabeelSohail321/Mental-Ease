@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mental_ease/user/UserDashboard.dart';
 import 'package:provider/provider.dart';
+import 'Providers/Auth_Provider/login_Provider.dart';
 import 'Providers/Profile_Provider/Profile_Provider.dart';
 
 class UserProfile extends StatefulWidget {
@@ -12,6 +14,12 @@ class _UserProfileState extends State<UserProfile> {
   final TextEditingController _currentPassController = TextEditingController();
   final TextEditingController _newPassController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
+
+  @override
+  void dispose() {
+    HomeScreen();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -27,6 +35,7 @@ class _UserProfileState extends State<UserProfile> {
   Widget build(BuildContext context) {
     final provider = Provider.of<UserProfileProvider>(context);
     final size = MediaQuery.of(context).size;
+    final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       appBar: PreferredSize(
@@ -109,7 +118,7 @@ class _UserProfileState extends State<UserProfile> {
               Divider(),
               _buildListTile("Change Password", "", Icons.edit, () => _showChangePasswordDialog(provider)),
               Divider(),
-              _buildListTile("Sign out", "", Icons.exit_to_app, () async => await provider.signOut(context), isLogout: true),
+              _buildListTile("Sign out", "", Icons.exit_to_app, () async => await authProvider.signOut(context), isLogout: true),
             ],
           ),
         ),
@@ -167,6 +176,7 @@ class _UserProfileState extends State<UserProfile> {
   }
 
   void _showChangePasswordDialog(UserProfileProvider provider) {
+    final RegExp passwordRegex = RegExp(r'^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$');
     bool _obscureCurrent = true;
     bool _obscureNew = true;
     bool _obscureConfirm = true;
@@ -203,7 +213,7 @@ class _UserProfileState extends State<UserProfile> {
 
                 SizedBox(height: 5,),
                 // New Password Field
-                TextField(
+                TextFormField(
                   controller: _newPassController,
                   obscureText: _obscureNew,
                   decoration: InputDecoration(
@@ -221,10 +231,15 @@ class _UserProfileState extends State<UserProfile> {
                       ),
                     ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'password cannot be empty';
+                    else if (!passwordRegex.hasMatch(value)) return 'Password must contain one number and one special character';
+                    return null;
+                  },
                 ),
                 SizedBox(height: 5,),
                 // Confirm New Password Field
-                TextField(
+                TextFormField(
                   controller: _confirmPassController,
                   obscureText: _obscureConfirm,
                   decoration:InputDecoration(
@@ -242,6 +257,12 @@ class _UserProfileState extends State<UserProfile> {
                       ),
                     ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Confirm password cannot be empty';
+                    else if (!passwordRegex.hasMatch(value)) return 'Password must contain one number and one special character';
+                    else if (value != _newPassController.text) return 'Passwords do not match';
+                    return null;
+                  },
                 ),
               ],
             ),
