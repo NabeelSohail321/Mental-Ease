@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:mental_ease/user/Login.dart';
-import 'package:mental_ease/user/Providers/Auth_Provider/SignUp_Provider.dart';
+import 'package:mental_ease/Login.dart';
 import 'package:provider/provider.dart';
+
+import 'Auth_Provider/SignUp_Provider.dart';
 
 class SignUpPage extends StatefulWidget {
   @override

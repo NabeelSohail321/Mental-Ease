@@ -5,8 +5,7 @@ import 'package:mental_ease/user/UserDashboard.dart';
 import 'package:provider/provider.dart';
 
 import '../../../Phycologist/Phycologist_dashboard.dart';
-import '../../Login.dart';
-import '../Profile_Provider/Profile_Provider.dart';
+import '../../../Login.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;

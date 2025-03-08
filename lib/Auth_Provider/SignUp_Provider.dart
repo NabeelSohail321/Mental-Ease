@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'package:mental_ease/user/Login.dart';
+import 'package:mental_ease/Login.dart';
 
 class SignupProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
-import 'Login.dart';
+import '../Auth_Provider/login_Provider.dart';
+import '../Login.dart';
 import 'Profile.dart';
-import 'Providers/Auth_Provider/login_Provider.dart';
 import 'Providers/Dashboard_Provider/Dashboard_Provider.dart';
 import 'Providers/Profile_Provider/Profile_Provider.dart';
 

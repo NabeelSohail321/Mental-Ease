@@ -1,11 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:mental_ease/user/Providers/Auth_Provider/SignUp_Provider.dart';
-import 'package:mental_ease/user/Providers/Auth_Provider/login_Provider.dart';
 import 'package:mental_ease/user/Providers/Dashboard_Provider/Dashboard_Provider.dart';
 import 'package:mental_ease/user/Providers/Profile_Provider/Profile_Provider.dart';
 import 'package:provider/provider.dart';
 
+import 'Auth_Provider/SignUp_Provider.dart';
+import 'Auth_Provider/login_Provider.dart';
 import 'Phycologist/Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
 import 'SplashScreen.dart';
 import 'firebase_options.dart';

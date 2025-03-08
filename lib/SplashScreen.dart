@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:mental_ease/user/Login.dart';
+import 'package:mental_ease/Login.dart';
 
-import 'user/Sign_Up.dart';
+import 'Sign_Up.dart';
 
 class SplachScreen extends StatefulWidget{
   @override

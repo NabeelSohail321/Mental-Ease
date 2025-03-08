@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
-import '../user/Login.dart';
-import '../user/Providers/Auth_Provider/login_Provider.dart';
+import '../Auth_Provider/login_Provider.dart';
+import '../Login.dart';
 import 'Phycologist_Profile.dart';
 import 'Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
 

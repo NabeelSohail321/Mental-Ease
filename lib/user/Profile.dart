@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mental_ease/user/UserDashboard.dart';
 import 'package:provider/provider.dart';
-import 'Providers/Auth_Provider/login_Provider.dart';
+
+import '../Auth_Provider/login_Provider.dart';
 import 'Providers/Profile_Provider/Profile_Provider.dart';
+
 
 class UserProfile extends StatefulWidget {
   @override
