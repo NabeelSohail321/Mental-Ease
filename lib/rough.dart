@@ -895,3 +895,150 @@
 //   }
 // }
 //
+
+
+//
+//
+// Card(
+// elevation: 4,
+// shape: RoundedRectangleBorder(
+// borderRadius: BorderRadius.circular(12),
+// ),
+// child: Column(
+// crossAxisAlignment: CrossAxisAlignment.start,
+// children: [
+// // Image Section
+// Stack(
+// children: [
+// Container(
+// height: screenHeight * 0.2,
+// decoration: BoxDecoration(
+// borderRadius: const BorderRadius.only(
+// topLeft: Radius.circular(12),
+// topRight: Radius.circular(12),
+// ),
+// image: DecorationImage(
+// image: AssetImage(item.image),
+// fit: BoxFit.cover,
+// ),
+// ),
+// ),
+// // Optional: Add a gradient overlay for text readability
+// Positioned.fill(
+// child: Container(
+// decoration: BoxDecoration(
+// borderRadius: const BorderRadius.only(
+// topLeft: Radius.circular(12),
+// topRight: Radius.circular(12),
+// ),
+// gradient: LinearGradient(
+// colors: [
+// Colors.black.withOpacity(0.2),
+// Colors.black.withOpacity(0.0),
+// ],
+// begin: Alignment.topCenter,
+// end: Alignment.bottomCenter,
+// ),
+// ),
+// ),
+// ),
+// ],
+// ),
+// Padding(
+// padding: const EdgeInsets.all(8.0),
+// child: Column(
+// crossAxisAlignment: CrossAxisAlignment.start,
+// children: [
+// // Row for Name and Price
+// Row(
+// mainAxisAlignment: MainAxisAlignment.spaceBetween,
+// children: [
+// // Item Name
+// Expanded(
+// child: Text(
+// item.name,
+// overflow: TextOverflow.ellipsis, // Handle text overflow
+// maxLines: 1, // Limit to a single line
+// style: TextStyle(
+// fontWeight: FontWeight.bold,
+// fontSize: screenHeight * 0.018,
+// ),
+// ),
+// ),
+// SizedBox(height: screenHeight * 0.01),
+// // Price
+// Text(
+// item.price,
+// textAlign: TextAlign.right,
+// style: TextStyle(
+// color: Colors.green,
+// fontSize: screenHeight * 0.016,
+// fontWeight: FontWeight.w600,
+// ),
+// ),
+// ],
+// ),
+// SizedBox(height: screenHeight * 0.001),
+// // Item Description
+// Text(
+// item.description,
+// overflow: TextOverflow.ellipsis, // Handle text overflow
+// maxLines: 1, // Limit description to 2 lines
+// style: TextStyle(
+// color: Colors.grey,
+// fontSize: screenHeight * 0.015,
+// ),
+// ),
+//
+// SizedBox(height: screenHeight * 0.005),
+// // Row for Item Sold and Rating
+// Row(
+// mainAxisAlignment: MainAxisAlignment.spaceBetween,
+// children: [
+// // Sold Items
+// Text(
+// '${item.soldItem} Sold',
+// overflow: TextOverflow.ellipsis,
+// maxLines: 1,
+// style: TextStyle(
+// fontWeight: FontWeight.bold,
+// color: isDarkTheme ? AppColors.lightBackgroundColor : AppColors.darkTextColor,
+// fontSize: screenHeight * 0.015,
+// ),
+// ),
+//
+// // Rating Stars
+// Row(
+// children: List.generate(5, (index) {
+// if (index < item.rating.floor()) {
+// // Full star
+// return Icon(
+// Icons.star,
+// color: Colors.orange,
+// size: screenHeight * 0.02,
+// );
+// } else if (index < item.rating) {
+// // Half star
+// return Icon(
+// Icons.star_half,
+// color: Colors.orange,
+// size: screenHeight * 0.02,
+// );
+// } else {
+// // Empty star
+// return Icon(
+// Icons.star_border,
+// color: Colors.orange,
+// size: screenHeight * 0.02,
+// );
+// }
+// }),
+// ),
+// ],
+// ),
+// ],
+// ),
+// ),
+// ],
+// ),
+// ),

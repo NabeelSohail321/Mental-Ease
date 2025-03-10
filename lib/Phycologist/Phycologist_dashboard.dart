@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
@@ -8,52 +9,25 @@ import '../Login.dart';
 import 'Phycologist_Profile.dart';
 import 'Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
 
-class phycologistHomeScreen extends StatefulWidget {
-  const phycologistHomeScreen({super.key});
+
+class PsychologistHomeScreen extends StatefulWidget {
+  const PsychologistHomeScreen({super.key});
 
   @override
-  State<phycologistHomeScreen> createState() => _phycologistHomeScreenState();
+  State<PsychologistHomeScreen> createState() => _PsychologistHomeScreenState();
 }
 
-class _phycologistHomeScreenState extends State<phycologistHomeScreen> {
-  final PersistentTabController _controller = PersistentTabController(initialIndex: 0);
+class _PsychologistHomeScreenState extends State<PsychologistHomeScreen> {
+  int _selectedIndex = 0; // Track the selected index for GoogleNav
 
-  List<Widget> _buildScreens() {
-    return [
-      PhycologistDashboard(),
-      PhycologistDashboard(),
-      PhycologistDashboard(),
-      PsychologistProfileScreen(),
-    ];
-  }
-  List<PersistentBottomNavBarItem> _navBarsItems() {
-    return [
-      PersistentBottomNavBarItem(
-        icon: Icon(Icons.home),
-        title: "Home",
-        activeColorPrimary: Colors.blue,
-        inactiveColorPrimary: Colors.grey,
-      ),
-      PersistentBottomNavBarItem(
-        icon: Icon(Icons.message_outlined),
-        title: "Messages",
-        activeColorPrimary: Colors.blue,
-        inactiveColorPrimary: Colors.grey,
-      ),
-      PersistentBottomNavBarItem(
-        icon: Icon(Icons.medical_services),
-        title: "Doctors",
-        activeColorPrimary: Colors.blue,
-        inactiveColorPrimary: Colors.grey,
-      ),
-      PersistentBottomNavBarItem(
-        icon: Icon(Icons.person),
-        title: "Profile",
-        activeColorPrimary: Colors.blue,
-        inactiveColorPrimary: Colors.grey,
-      ),
-    ];
-  }
+  // List of screens to display based on the selected index
+  final List<Widget> _screens = [
+    PhycologistDashboard(),
+    PhycologistDashboard(), // Replace with your Messages screen
+    PhycologistDashboard(), // Replace with your Doctors screen
+    PsychologistProfileScreen(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
@@ -63,15 +37,46 @@ class _phycologistHomeScreenState extends State<phycologistHomeScreen> {
           return LoginPage(); // Redirect to Login Screen
         }
 
-        // Show Persistent Bottom Nav Bar if user is logged in
-        return PersistentTabView(
-          context,
-          controller: _controller,
-          screens: _buildScreens(),
-          items: _navBarsItems(),
-          backgroundColor: Colors.white,
-          navBarStyle: NavBarStyle.style1,
-          popBehaviorOnSelectedNavBarItemPress: PopBehavior.all,
+        // Show GoogleNav if user is logged in
+        return Scaffold(
+          body: _screens[_selectedIndex], // Display the selected screen
+          bottomNavigationBar: Container(
+            color: Colors.white, // Background color of the navigation bar
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
+              child: GNav(
+                gap: 8, // Space between icon and text
+                activeColor: Color(0xFF006064), // Color of the selected item
+                color: Colors.grey, // Color of the unselected items
+                tabBackgroundColor: Color(0xFF80DEEA), // Background color of the selected item
+                padding: EdgeInsets.all(12), // Padding for each tab
+                tabs: [
+                  GButton(
+                    icon: Icons.home,
+                    text: 'Home',
+                  ),
+                  GButton(
+                    icon: Icons.message_outlined,
+                    text: 'Messages',
+                  ),
+                  GButton(
+                    icon: Icons.medical_services,
+                    text: 'Doctors',
+                  ),
+                  GButton(
+                    icon: Icons.person,
+                    text: 'Profile',
+                  ),
+                ],
+                selectedIndex: _selectedIndex,
+                onTabChange: (index) {
+                  setState(() {
+                    _selectedIndex = index; // Update the selected index
+                  });
+                },
+              ),
+            ),
+          ),
         );
       },
     );

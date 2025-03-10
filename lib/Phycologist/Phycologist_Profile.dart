@@ -25,6 +25,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   List<String> _selectedDays = [];
+  List<String> _selectedDegrees = []; // List to store selected degrees
 
   @override
   void initState() {
@@ -44,6 +45,9 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
         if (provider.weekDays != null) {
           _weekDaysController.text = provider.weekDays!;
           _selectedDays = provider.weekDays!.split(', ');
+        }
+        if (provider.degrees != null) {
+          _selectedDegrees = provider.degrees!; // Initialize degrees
         }
       });
     });
@@ -156,11 +160,25 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
     );
   }
 
+  void _addDegree(String degree) {
+    if (_selectedDegrees.length < 5 && !_selectedDegrees.contains(degree)) {
+      setState(() {
+        _selectedDegrees.add(degree);
+      });
+    }
+  }
+
+  void _removeDegree(String degree) {
+    setState(() {
+      _selectedDegrees.remove(degree);
+    });
+  }
+
   bool _validateFields() {
     if (_nameController.text.isEmpty ||
         _addressController.text.isEmpty ||
         _phoneNumberController.text.isEmpty ||
-        _degreeController.text.isEmpty ||
+        _selectedDegrees.isEmpty || // Check if degrees are selected
         _specializationController.text.isEmpty ||
         _experienceController.text.isEmpty ||
         _clinicTimingController.text.isEmpty ||
@@ -240,8 +258,8 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
         onPressed: () {
           authProvider.signOut(context);
         },
-        backgroundColor: Colors.red, // Use a distinct color for the sign-out button
-        child: Icon(Icons.logout, color: Colors.white), // Use a recognizable icon
+        backgroundColor: Colors.red,
+        child: Icon(Icons.logout, color: Colors.white),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
@@ -257,14 +275,13 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
             // Email Field (Uneditable)
             _buildEmailField(provider.email, 'Email', Icons.email),
 
-            // Two Fields per Row
-            Row(
-              children: [
-                Expanded(child: _buildTextField(_degreeController, provider.degreeName, 'Degree Name', Icons.school)),
-                SizedBox(width: 10),
-                Expanded(child: _buildTextField(_specializationController, provider.specialization, 'Specialization', Icons.work)),
-              ],
-            ),
+            // Degree Field
+            _buildDegreeField(),
+
+            // Specialization Field
+            _buildTextField(_specializationController, provider.specialization, 'Specialization', Icons.work),
+
+            // Experience and Clinic Timing Fields
             Row(
               children: [
                 Expanded(child: _buildTextField(_experienceController, provider.experience, 'Experience (Years)', Icons.timeline, isNumeric: true)),
@@ -272,6 +289,8 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
                 Expanded(child: _buildClinicTimingField()),
               ],
             ),
+
+            // Week Days and Appointment Fee Fields
             Row(
               children: [
                 Expanded(child: _buildWeekDaysField()),
@@ -281,11 +300,14 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
             ),
             SizedBox(height: 10),
 
+            // Stripe ID Field
             _buildTextField(_stripeIdController, provider.stripeId, 'Stripe Account ID', Icons.account_balance),
             SizedBox(height: 10),
 
+            // Description Field
             _buildDescriptionField(_descriptionController, provider.description, 'Description', Icons.description),
 
+            // Save Changes Button
             SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -302,7 +324,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
                     name: _nameController.text,
                     address: _addressController.text,
                     phoneNumber: _phoneNumberController.text,
-                    degreeName: _degreeController.text,
+                    degrees: _selectedDegrees, // Pass the list of degrees
                     specialization: _specializationController.text,
                     experience: _experienceController.text,
                     clinicTiming: _clinicTimingController.text,
@@ -339,27 +361,46 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
           imageUrl: provider.degreeImageUrl,
           placeholderIcon: Icons.school,
           onTap: () => _pickImage('degreeImageUrl'),
-          label: 'Degree Image',
+          label: 'Latest Degree Image',
         ),
       ],
     );
   }
 
-  Widget _buildDescriptionField(TextEditingController controller, String? initialValue, String label, IconData icon) {
-    if (initialValue != null && controller.text.isEmpty) {
-      controller.text = initialValue;
-    }
-    return TextField(
-      controller: controller,
-      maxLines: 4,
-      maxLength: 1000,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        filled: true,
-        fillColor: Colors.grey[100],
-      ),
+  Widget _buildDegreeField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _degreeController,
+          decoration: InputDecoration(
+            labelText: 'Add Degree',
+            prefixIcon: Icon(Icons.school),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            filled: true,
+            fillColor: Colors.grey[100],
+            suffixIcon: IconButton(
+              icon: Icon(Icons.add),
+              onPressed: () {
+                if (_degreeController.text.isNotEmpty) {
+                  _addDegree(_degreeController.text);
+                  _degreeController.clear();
+                }
+              },
+            ),
+          ),
+        ),
+        SizedBox(height: 10),
+        Wrap(
+          spacing: 8.0,
+          children: _selectedDegrees.map((degree) {
+            return Chip(
+              label: Text(degree),
+              onDeleted: () => _removeDegree(degree),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -464,6 +505,24 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
     );
   }
 
+  Widget _buildDescriptionField(TextEditingController controller, String? initialValue, String label, IconData icon) {
+    if (initialValue != null && controller.text.isEmpty) {
+      controller.text = initialValue;
+    }
+    return TextField(
+      controller: controller,
+      maxLines: 4,
+      maxLength: 1000,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: Colors.grey[100],
+      ),
+    );
+  }
+
   Widget _buildImageContainer({
     required String? imageUrl,
     required IconData placeholderIcon,
@@ -504,7 +563,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
           ],
         ),
         SizedBox(height: 5),
-        Text(label, style: TextStyle(color: Colors.black,fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(label, style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
       ],
     );
   }

@@ -70,7 +70,7 @@ class AuthProvider with ChangeNotifier {
       },),  (Route<dynamic> route) => false,);
     } else if (role == "Psychologist") {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
-        return phycologistHomeScreen();
+        return PsychologistHomeScreen();
       },),  (Route<dynamic> route) => false,);
     } else if (role == "Admin") {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
@@ -113,6 +113,7 @@ class AuthProvider with ChangeNotifier {
     });
     _isLoggedIn = false;
     notifyListeners();
+
 
   }
 }

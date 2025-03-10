@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
 import '../Auth_Provider/login_Provider.dart';
 import '../Login.dart';
+import 'Doctors_Listing.dart';
 import 'Profile.dart';
 import 'Providers/Dashboard_Provider/Dashboard_Provider.dart';
 import 'Providers/Profile_Provider/Profile_Provider.dart';
+
+
 
 
 class HomeScreen extends StatefulWidget {
@@ -17,45 +21,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0; // Track the selected index for GoogleNav
 
-  final PersistentTabController _controller = PersistentTabController(initialIndex: 0);
+  // List of screens to display based on the selected index
+  final List<Widget> _screens = [
+    Userdashboard(),
+    Userdashboard(), // Replace with your Messages screen
+    Userdashboard(), // Replace with your Doctors screen
+    UserProfile(),
+  ];
 
-  List<Widget> _buildScreens() {
-    return [
-      Userdashboard(),
-      Userdashboard(),
-      Userdashboard(),
-      UserProfile(),
-    ];
-  }
-  List<PersistentBottomNavBarItem> _navBarsItems() {
-    return [
-      PersistentBottomNavBarItem(
-        icon: Icon(Icons.home),
-        title: "Home",
-        activeColorPrimary: Colors.blue,
-        inactiveColorPrimary: Colors.grey,
-      ),
-      PersistentBottomNavBarItem(
-        icon: Icon(Icons.message_outlined),
-        title: "Messages",
-        activeColorPrimary: Colors.blue,
-        inactiveColorPrimary: Colors.grey,
-      ),
-      PersistentBottomNavBarItem(
-        icon: Icon(Icons.medical_services),
-        title: "Doctors",
-        activeColorPrimary: Colors.blue,
-        inactiveColorPrimary: Colors.grey,
-      ),
-      PersistentBottomNavBarItem(
-        icon: Icon(Icons.person),
-        title: "Profile",
-        activeColorPrimary: Colors.blue,
-        inactiveColorPrimary: Colors.grey,
-      ),
-    ];
-  }
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
@@ -65,15 +40,46 @@ class _HomeScreenState extends State<HomeScreen> {
           return LoginPage(); // Redirect to Login Screen
         }
 
-        // Show Persistent Bottom Nav Bar if user is logged in
-        return PersistentTabView(
-          context,
-          controller: _controller,
-          screens: _buildScreens(),
-          items: _navBarsItems(),
-          backgroundColor: Colors.white,
-          navBarStyle: NavBarStyle.style1,
-          popBehaviorOnSelectedNavBarItemPress: PopBehavior.all,
+        // Show GoogleNav if user is logged in
+        return Scaffold(
+          body: _screens[_selectedIndex], // Display the selected screen
+          bottomNavigationBar: Container(
+            color: Colors.white, // Background color of the navigation bar
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
+              child: GNav(
+                gap: 8, // Space between icon and text
+                activeColor: Color(0xFF006064), // Color of the selected item
+                color: Colors.grey, // Color of the unselected items
+                tabBackgroundColor: Color(0xFF80DEEA), // Background color of the selected item
+                padding: EdgeInsets.all(12), // Padding for each tab
+                tabs: [
+                  GButton(
+                    icon: Icons.home,
+                    text: 'Home',
+                  ),
+                  GButton(
+                    icon: Icons.message_outlined,
+                    text: 'Messages',
+                  ),
+                  GButton(
+                    icon: Icons.medical_services,
+                    text: 'Doctors',
+                  ),
+                  GButton(
+                    icon: Icons.person,
+                    text: 'Profile',
+                  ),
+                ],
+                selectedIndex: _selectedIndex,
+                onTabChange: (index) {
+                  setState(() {
+                    _selectedIndex = index; // Update the selected index
+                  });
+                },
+              ),
+            ),
+          ),
         );
       },
     );
@@ -298,7 +304,11 @@ class _UserdashboardState extends State<Userdashboard> {
                       height: MediaQuery.of(context).size.width*0.15,
                       width: MediaQuery.of(context).size.width * 0.8,
                       child: ElevatedButton(
-                        onPressed: (){},
+                        onPressed: (){
+                          Navigator.push(context, MaterialPageRoute(builder: (context) {
+                            return DoctorsListing();
+                          },));
+                        },
                         child: Text('Consult Now',style: TextStyle(fontWeight: FontWeight.bold),),
                         style: ElevatedButton.styleFrom(
         

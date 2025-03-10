@@ -38,13 +38,15 @@ class PsychologistProvider with ChangeNotifier {
 
 
 
+
+
 class PsychologistProfileProvider with ChangeNotifier {
   String? _profileImageUrl;
   String? _degreeImageUrl;
   String? _description;
   String? _phoneNumber;
   String? _address;
-  String? _degreeName;
+  List<String>? _degrees; // Updated to support multiple degrees
   String? _name;
   String? _specialization;
   String? _experience;
@@ -59,7 +61,7 @@ class PsychologistProfileProvider with ChangeNotifier {
   String? get description => _description;
   String? get phoneNumber => _phoneNumber;
   String? get address => _address;
-  String? get degreeName => _degreeName;
+  List<String>? get degrees => _degrees; // Updated getter
   String? get name => _name;
   String? get specialization => _specialization;
   String? get experience => _experience;
@@ -80,20 +82,25 @@ class PsychologistProfileProvider with ChangeNotifier {
       final snapshot = await _databaseRef.child("users").child(user.uid).get();
       if (snapshot.exists && snapshot.value is Map) {
         final data = Map<String, dynamic>.from(snapshot.value as Map);
-        _profileImageUrl = data['profileImageUrl'];
-        _degreeImageUrl = data['degreeImageUrl'];
-        _description = data['description'];
-        _phoneNumber = data['phoneNumber'];
-        _address = data['address'];
-        _degreeName = data['degreeName'];
-        _name = data['username'];
-        _specialization = data['specialization'];
-        _experience = data['experience'];
-        _clinicTiming = data['clinicTiming'];
-        _weekDays = data['weekDays'];
-        _appointmentFee = data['appointmentFee'];
-        _stripeId = data['stripeId'];
-        _email = data['email'];
+
+        // Explicitly cast each field to the correct type
+        _profileImageUrl = data['profileImageUrl'] as String?;
+        _degreeImageUrl = data['degreeImageUrl'] as String?;
+        _description = data['description'] as String?;
+        _phoneNumber = data['phoneNumber'] as String?;
+        _address = data['address'] as String?;
+        _degrees = data['degrees'] != null
+            ? List<String>.from(data['degrees'] as List<dynamic>)
+            : []; // Cast to List<String>
+        _name = data['username'] as String?;
+        _specialization = data['specialization'] as String?;
+        _experience = data['experience'] as String?;
+        _clinicTiming = data['clinicTiming'] as String?;
+        _weekDays = data['weekDays'] as String?;
+        _appointmentFee = data['appointmentFee'] as String?;
+        _stripeId = data['stripeId'] as String?;
+        _email = data['email'] as String?;
+
         notifyListeners();
       }
     } catch (e) {
@@ -106,7 +113,7 @@ class PsychologistProfileProvider with ChangeNotifier {
     String? description,
     String? phoneNumber,
     String? address,
-    String? degreeName,
+    List<String>? degrees, // Updated to accept a list of degrees
     String? specialization,
     String? experience,
     String? clinicTiming,
@@ -123,7 +130,7 @@ class PsychologistProfileProvider with ChangeNotifier {
         'description': description ?? _description,
         'phoneNumber': phoneNumber ?? _phoneNumber,
         'address': address ?? _address,
-        'degreeName': degreeName ?? _degreeName,
+        'degrees': degrees ?? _degrees, // Updated for degrees
         'specialization': specialization ?? _specialization,
         'experience': experience ?? _experience,
         'clinicTiming': clinicTiming ?? _clinicTiming,
@@ -135,17 +142,17 @@ class PsychologistProfileProvider with ChangeNotifier {
       await _databaseRef.child("users").child(user.uid).update(updatedData);
 
       // Update local variables
-      _name = updatedData['name'];
-      _description = updatedData['description'];
-      _phoneNumber = updatedData['phoneNumber'];
-      _address = updatedData['address'];
-      _degreeName = updatedData['degreeName'];
-      _specialization = updatedData['specialization'];
-      _experience = updatedData['experience'];
-      _clinicTiming = updatedData['clinicTiming'];
-      _weekDays = updatedData['weekDays'];
-      _appointmentFee = updatedData['appointmentFee'];
-      _stripeId = updatedData['stripeId'];
+      _name = updatedData['name'] as String?;
+      _description = updatedData['description'] as String?;
+      _phoneNumber = updatedData['phoneNumber'] as String?;
+      _address = updatedData['address'] as String?;
+      _degrees = updatedData['degrees'] as List<String>?; // Cast to List<String>
+      _specialization = updatedData['specialization'] as String?;
+      _experience = updatedData['experience'] as String?;
+      _clinicTiming = updatedData['clinicTiming'] as String?;
+      _weekDays = updatedData['weekDays'] as String?;
+      _appointmentFee = updatedData['appointmentFee'] as String?;
+      _stripeId = updatedData['stripeId'] as String?;
 
       if (_areAllFieldsFilled()) {
         await _databaseRef.child("users").child(user.uid).update({'isListed': true});
@@ -195,8 +202,8 @@ class PsychologistProfileProvider with ChangeNotifier {
         _phoneNumber!.isNotEmpty &&
         _address != null &&
         _address!.isNotEmpty &&
-        _degreeName != null &&
-        _degreeName!.isNotEmpty &&
+        _degrees != null &&
+        _degrees!.isNotEmpty && // Check if at least one degree is selected
         _name != null &&
         _name!.isNotEmpty &&
         _specialization != null &&
