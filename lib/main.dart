@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:mental_ease/user/Providers/Dashboard_Provider/Dashboard_Provider.dart';
+import 'package:mental_ease/user/Providers/Doctors_Provider/DoctorProfileProvider.dart';
 import 'package:mental_ease/user/Providers/Profile_Provider/Profile_Provider.dart';
 import 'package:provider/provider.dart';
 
@@ -19,7 +20,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(create: (_) => UserProfileProvider()),
         ChangeNotifierProvider(create: (_) => PsychologistProvider()),
-        ChangeNotifierProvider(create: (_) => PsychologistProfileProvider())
+        ChangeNotifierProvider(create: (_) => PsychologistProfileProvider()),
+        ChangeNotifierProvider(create: (_) => PsychologistProfileViewProvider()),
+
 
       ],
       child: const MyApp(),

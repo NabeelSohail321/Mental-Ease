@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'Doctor_Profile.dart';
+
 class DoctorsListing extends StatefulWidget {
   const DoctorsListing({super.key});
 
@@ -307,6 +309,10 @@ class _DoctorsListingState extends State<DoctorsListing> {
                           return GestureDetector(
                             onTap: (){
 
+                              Navigator.push(context, MaterialPageRoute(builder: (context) {
+                                return DoctorProfile(doctor['uid']);
+                              },));
+                              
                             },
                             child: Card(
                               elevation: 10,
@@ -403,7 +409,7 @@ class _DoctorsListingState extends State<DoctorsListing> {
                                             ),
                                             Row(
                                               children: List.generate(5, (index) {
-                                                final rating = doctor['rating'] ?? 0.0;
+                                                final rating = double.tryParse(doctor['ratings'] ?? "0.0") ?? 0.0;
                                                 if (index < rating.floor()) {
                                                   return Icon(
                                                     Icons.star,

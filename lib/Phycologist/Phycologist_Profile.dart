@@ -25,14 +25,14 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   List<String> _selectedDays = [];
-  List<String> _selectedDegrees = []; // List to store selected degrees
+  List<String> _selectedDegrees = [];
+  Map<String, List<TimeOfDay>> _onlineTimeSlots = {};
 
   @override
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, () {
       context.read<PsychologistProfileProvider>().fetchProfileData().then((_) {
-        // Initialize clinic timing and weekdays from provider
         final provider = context.read<PsychologistProfileProvider>();
         if (provider.clinicTiming != null) {
           _clinicTimingController.text = provider.clinicTiming!;
@@ -47,7 +47,12 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
           _selectedDays = provider.weekDays!.split(', ');
         }
         if (provider.degrees != null) {
-          _selectedDegrees = provider.degrees!; // Initialize degrees
+          _selectedDegrees = provider.degrees!;
+        }
+        if (provider.onlineTimeSlots != null) {
+          setState(() {
+            _onlineTimeSlots = provider.onlineTimeSlots!;
+          });
         }
       });
     });
@@ -174,11 +179,193 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
     });
   }
 
+  Future<void> _selectDayAndTimeSlots() async {
+    final DateTime? selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(Duration(days: 1)), // Start from tomorrow
+      firstDate: DateTime.now().add(Duration(days: 1)), // Prevent selecting today
+      lastDate: DateTime.now().add(Duration(days: 35)), // Max 5 weeks
+    );
+
+    if (selectedDate != null) {
+      final String dateKey = selectedDate.toIso8601String().split('T')[0];
+      if (_onlineTimeSlots.containsKey(dateKey)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Time slots already added for this day')),
+        );
+        return;
+      }
+
+      final List<TimeOfDay> timeSlots = [];
+      for (int i = 0; i < 6; i++) { // Max 6 slots per day
+        final TimeOfDay? selectedTime = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.now(),
+        );
+        if (selectedTime != null) {
+          // Ensure the selected time is in the future
+          final now = DateTime.now();
+          final selectedDateTime = DateTime(
+            selectedDate.year,
+            selectedDate.month,
+            selectedDate.day,
+            selectedTime.hour,
+            selectedTime.minute,
+          );
+          if (selectedDateTime.isAfter(now)) {
+            timeSlots.add(selectedTime);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Selected time must be in the future')),
+            );
+          }
+        } else {
+          break; // Stop if user cancels time selection
+        }
+      }
+
+      if (timeSlots.isNotEmpty) {
+        setState(() {
+          _onlineTimeSlots[dateKey] = timeSlots;
+        });
+      }
+    }
+  }
+
+  void _removeSlot(String dateKey) {
+    setState(() {
+      _onlineTimeSlots.remove(dateKey);
+    });
+  }
+
+  void _editSlot(String dateKey) async {
+    final List<TimeOfDay>? updatedSlots = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final List<TimeOfDay> slots = _onlineTimeSlots[dateKey]!;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Edit Time Slots for $dateKey'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    ...slots.map((slot) {
+                      return ListTile(
+                        title: Text(slot.format(context)),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete),
+                          onPressed: () {
+                            setState(() {
+                              slots.remove(slot);
+                            });
+                          },
+                        ),
+                      );
+                    }).toList(),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final TimeOfDay? newSlot = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (newSlot != null) {
+                          // Ensure the new slot is in the future
+                          final now = DateTime.now();
+                          final selectedDateTime = DateTime(
+                            DateTime.parse(dateKey).year,
+                            DateTime.parse(dateKey).month,
+                            DateTime.parse(dateKey).day,
+                            newSlot.hour,
+                            newSlot.minute,
+                          );
+                          if (selectedDateTime.isAfter(now)) {
+                            setState(() {
+                              slots.add(newSlot);
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Selected time must be in the future')),
+                            );
+                          }
+                        }
+                      },
+                      child: Text('Add New Slot'),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(slots);
+                  },
+                  child: Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (updatedSlots != null) {
+      setState(() {
+        _onlineTimeSlots[dateKey] = updatedSlots;
+      });
+    }
+  }
+
+  Widget _buildOnlineTimeSlotsField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF006064),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(36),
+              ),
+          ),
+          onPressed: _selectDayAndTimeSlots,
+          child: Text('Add Online Time Slots',style: TextStyle(fontSize: 16),),
+        ),
+        SizedBox(height: 10),
+        ..._onlineTimeSlots.entries.map((entry) {
+          final dateKey = entry.key;
+          final timeSlots = entry.value;
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 5),
+            child: ListTile(
+              title: Text('Date: $dateKey'),
+              subtitle: Text('Time Slots: ${timeSlots.map((time) => time.format(context)).join(', ')}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.edit),
+                    onPressed: () => _editSlot(dateKey),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete),
+                    onPressed: () => _removeSlot(dateKey),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
   bool _validateFields() {
     if (_nameController.text.isEmpty ||
         _addressController.text.isEmpty ||
         _phoneNumberController.text.isEmpty ||
-        _selectedDegrees.isEmpty || // Check if degrees are selected
+        _selectedDegrees.isEmpty ||
         _specializationController.text.isEmpty ||
         _experienceController.text.isEmpty ||
         _clinicTimingController.text.isEmpty ||
@@ -271,17 +458,9 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
             _buildAddressField(_addressController, provider.address, 'Clinic Address', Icons.location_on),
             _buildTextField(_phoneNumberController, provider.phoneNumber, 'Phone Number', Icons.phone, isNumeric: true),
             SizedBox(height: 10),
-
-            // Email Field (Uneditable)
             _buildEmailField(provider.email, 'Email', Icons.email),
-
-            // Degree Field
             _buildDegreeField(),
-
-            // Specialization Field
             _buildTextField(_specializationController, provider.specialization, 'Specialization', Icons.work),
-
-            // Experience and Clinic Timing Fields
             Row(
               children: [
                 Expanded(child: _buildTextField(_experienceController, provider.experience, 'Experience (Years)', Icons.timeline, isNumeric: true)),
@@ -289,8 +468,6 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
                 Expanded(child: _buildClinicTimingField()),
               ],
             ),
-
-            // Week Days and Appointment Fee Fields
             Row(
               children: [
                 Expanded(child: _buildWeekDaysField()),
@@ -299,15 +476,10 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
               ],
             ),
             SizedBox(height: 10),
-
-            // Stripe ID Field
             _buildTextField(_stripeIdController, provider.stripeId, 'Stripe Account ID', Icons.account_balance),
             SizedBox(height: 10),
-
-            // Description Field
             _buildDescriptionField(_descriptionController, provider.description, 'Description', Icons.description),
-
-            // Save Changes Button
+            _buildOnlineTimeSlotsField(),
             SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -324,7 +496,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
                     name: _nameController.text,
                     address: _addressController.text,
                     phoneNumber: _phoneNumberController.text,
-                    degrees: _selectedDegrees, // Pass the list of degrees
+                    degrees: _selectedDegrees,
                     specialization: _specializationController.text,
                     experience: _experienceController.text,
                     clinicTiming: _clinicTimingController.text,
@@ -332,6 +504,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
                     appointmentFee: _appointmentFeeController.text,
                     stripeId: _stripeIdController.text,
                     description: _descriptionController.text,
+                    onlineTimeSlots: _onlineTimeSlots,
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Profile Updated')),
@@ -432,8 +605,8 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
         controller: controller,
-        maxLines: 3, // Limit to 3 lines
-        maxLength: 300, // Limit to 300 characters
+        maxLines: 3,
+        maxLength: 300,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
@@ -450,13 +623,13 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
         controller: TextEditingController(text: email),
-        enabled: false, // Make the field uneditable
+        enabled: false,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           filled: true,
-          fillColor: Colors.grey[200], // Use a different color to indicate it's disabled
+          fillColor: Colors.grey[200],
         ),
       ),
     );
@@ -467,9 +640,9 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: InkWell(
         onTap: () async {
-          await _selectTime(context, true); // Select start time
+          await _selectTime(context, true);
           if (_startTime != null) {
-            await _selectTime(context, false); // Select end time
+            await _selectTime(context, false);
           }
         },
         child: InputDecorator(
@@ -538,9 +711,9 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12), // Rounded corners
-                border: Border.all(color: Colors.teal, width: 2), // Frame border
-                color: Colors.grey[300], // Placeholder background
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.teal, width: 2),
+                color: Colors.grey[300],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
