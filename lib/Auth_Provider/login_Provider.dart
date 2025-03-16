@@ -29,7 +29,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loginUser(BuildContext context, String email, String password) async {
+  Future<void> loginUser(BuildContext context, String email, String password, String token) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -47,6 +47,8 @@ class AuthProvider with ChangeNotifier {
 
         if (event.snapshot.exists) {
           String role = event.snapshot.value.toString();
+
+          _dbRef.child(uid).update({'deviceToken': token});
           _navigateToRolePage(context, role);
         } else {
           _showError(context, "User role not found.");

@@ -1,11 +1,12 @@
 
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
-import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
 import '../Auth_Provider/login_Provider.dart';
 import '../Login.dart';
+import '../user/ChatScreen.dart';
 import 'Phycologist_Profile.dart';
 import 'Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
 
@@ -24,7 +25,7 @@ class _PsychologistHomeScreenState extends State<PsychologistHomeScreen> {
   final List<Widget> _screens = [
     PhycologistDashboard(),
     PhycologistDashboard(), // Replace with your Messages screen
-    PhycologistDashboard(), // Replace with your Doctors screen
+    ChatScreen(firebase_auth.FirebaseAuth.instance.currentUser!.uid,"464yLmzMzJeHsymcFkMGbIIKqUJ2"), // Replace with your Doctors screen
     PsychologistProfileScreen(),
   ];
 

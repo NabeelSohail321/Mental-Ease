@@ -4,6 +4,7 @@ import 'package:mental_ease/Sign_Up.dart';
 import 'package:provider/provider.dart';
 
 import 'Auth_Provider/login_Provider.dart';
+import 'Notification_Services.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -12,6 +13,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class LoginPageState extends State<LoginPage> {
+
+  NotificationServices notificationServices =  NotificationServices();
+
+
   final formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -19,7 +24,24 @@ class LoginPageState extends State<LoginPage> {
 
   bool isPasswordValid = false;
   bool isPasswordVisible = false;
+  String? token;
 
+  @override
+  void initState() {
+    // TODO: implement initState
+    notificationServices.requestNotificationPermission();
+
+    notificationServices.firebaseInit(context);
+    notificationServices.isTokenRefresh();
+    _fetchDeviceToken();
+  }
+
+  Future<void> _fetchDeviceToken() async {
+    final deviceToken = await notificationServices.getDeviceToken();
+    setState(() {
+      token = deviceToken; // Update the token in the state
+    });
+  }
   @override
   void dispose() {
     emailController.dispose();
@@ -184,7 +206,7 @@ class LoginPageState extends State<LoginPage> {
                       onPressed: () {
                         if (formKey.currentState!.validate()) {
 
-                          LoginProvider.loginUser(context, emailController.text, passwordController.text);
+                          LoginProvider.loginUser(context, emailController.text, passwordController.text,token!);
 
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(

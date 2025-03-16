@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
-import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
 import '../Auth_Provider/login_Provider.dart';
 import '../Login.dart';
 import 'Doctors_Listing.dart';
+import 'Inbox.dart';
 import 'Profile.dart';
 import 'Providers/Dashboard_Provider/Dashboard_Provider.dart';
 import 'Providers/Profile_Provider/Profile_Provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 
 
@@ -23,10 +24,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0; // Track the selected index for GoogleNav
 
+
   // List of screens to display based on the selected index
   final List<Widget> _screens = [
     Userdashboard(),
-    Userdashboard(), // Replace with your Messages screen
+    InboxScreen(firebase_auth.FirebaseAuth.instance.currentUser!.uid), // Replace with your Messages screen
     Userdashboard(), // Replace with your Doctors screen
     UserProfile(),
   ];

@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mental_ease/user/ChatScreen.dart';
 import 'package:provider/provider.dart';
 import '../Phycologist/Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
 import 'Providers/Doctors_Provider/DoctorProfileProvider.dart';
@@ -32,6 +34,7 @@ class _DoctorProfileState extends State<DoctorProfile> {
 
   @override
   Widget build(BuildContext context) {
+    String? uid =FirebaseAuth.instance.currentUser?.uid;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -358,7 +361,9 @@ class _DoctorProfileState extends State<DoctorProfile> {
                   width: screenWidth * 0.2,
                   child: ElevatedButton(
                     onPressed: () {
-                      // Handle chat button press
+                      Navigator.push(context, MaterialPageRoute(builder: (context) {
+                        return ChatScreen(uid!,widget.doctorId as String);
+                      },));
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF006064),

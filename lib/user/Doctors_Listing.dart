@@ -3,6 +3,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'Doctor_Profile.dart';
+import 'UserDashboard.dart';
 
 class DoctorsListing extends StatefulWidget {
   const DoctorsListing({super.key});
@@ -312,7 +313,7 @@ class _DoctorsListingState extends State<DoctorsListing> {
                               Navigator.push(context, MaterialPageRoute(builder: (context) {
                                 return DoctorProfile(doctor['uid']);
                               },));
-                              
+
                             },
                             child: Card(
                               elevation: 10,
@@ -449,6 +450,20 @@ class _DoctorsListingState extends State<DoctorsListing> {
             ),
           ),
         ],
+      ),
+      floatingActionButton: SizedBox(
+        height: screenHeight*0.08,
+        width: screenWidth*0.17,
+        child: FloatingActionButton(
+          onPressed: () {
+            // Navigate to the home page
+            Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
+              return HomeScreen();
+            },),(_) => false, );
+          },
+          child: Icon(Icons.home,color: Colors.white,size: 35,),
+          backgroundColor: Color(0xFF006064),
+        ),
       ),
     );
   }
