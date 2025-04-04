@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:mental_ease/Login.dart';
+import 'package:provider/provider.dart';
 
+import 'Auth_Provider/login_Provider.dart';
+import 'Notification_Services.dart';
 import 'Sign_Up.dart';
 
 class SplachScreen extends StatefulWidget{
@@ -13,15 +16,18 @@ class SplachScreen extends StatefulWidget{
 
 class _SplachScreenState extends State<SplachScreen> {
 
+  NotificationServices notificationServices =  NotificationServices();
+
+
   @override
   void initState() {
     super.initState();
+    notificationServices.requestNotificationPermission();
+
+    notificationServices.firebaseInit(context);
 
     Timer(Duration(seconds: 3), (){
-      Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => LoginPage())
-      );
+      Provider.of<AuthProvider>(context, listen: false).checkUserAndNavigate(context);
     }
     );
   }

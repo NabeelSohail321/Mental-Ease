@@ -9,13 +9,20 @@ import 'package:provider/provider.dart';
 
 import 'Auth_Provider/SignUp_Provider.dart';
 import 'Auth_Provider/login_Provider.dart';
+import 'Notification_Services.dart';
 import 'Phycologist/Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
 import 'SplashScreen.dart';
 import 'firebase_options.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   runApp(
     MultiProvider(
       providers: [
@@ -33,9 +40,8 @@ Future<void> main() async {
       child: const MyApp(),
     ),
   );
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+
 }
 
 Future<void> _firebaseMessagingBackgroundHandler ( RemoteMessage message) async {
@@ -56,6 +62,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         theme: ThemeData(
           fontFamily: "CustomFont", // Apply font globally
         ),

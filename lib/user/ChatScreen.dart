@@ -1,8 +1,14 @@
 import 'dart:convert';
 
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
+import '../Video_Call_Service.dart';
+import '../serverkey.dart';
+import '../videoCall.dart';
 import 'Providers/Chat_Providers/Chat_Provider.dart';
 import 'Providers/Doctors_Provider/DoctorProfileProvider.dart';
 import 'package:http/http.dart' as http;
@@ -24,8 +30,21 @@ class _ChatScreenState extends State<ChatScreen> {
   late String _chatId;
   bool _isLoading = true; // Track loading state
 
+  final channelController = 'Mental Ease';
+  bool _validateError = false;
+  ClientRoleType? _role = ClientRoleType.clientRoleBroadcaster;
+
+
+  @override
+  void dispose() {
+
+    // TODO: implement dispose
+    super.dispose();
+  }
+
   @override
   void initState() {
+    print(_role);
     super.initState();
     final provider = Provider.of<PsychologistProfileViewProvider>(context, listen: false);
     provider.fetchProfileData(widget.receiverId);
@@ -108,6 +127,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           IconButton(
                             icon: Icon(Icons.video_call, size: screenHeight * 0.04), // Video call icon
                             onPressed: () {
+                              onJoin();
                               // Add video call functionality here
                               print('Video call button pressed');
                             },
@@ -228,5 +248,100 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> onJoin() async{
+
+
+    setState(() {
+      channelController.isEmpty? _validateError = true: _validateError =false;
+    });
+    if(channelController.isNotEmpty){
+      await _handleCameraAndMic(Permission.camera);
+      await _handleCameraAndMic(Permission.microphone);
+
+
+      final channelId = await generateChannelId(widget.senderId,widget.receiverId);
+
+      _sendCallNotification(widget.senderId,widget.receiverId,channelId);
+      await Navigator.push(context, MaterialPageRoute(builder: (context) {
+        return callPage(channelController,"broadcaster");
+      },));
+    }
+
+
+  }
+
+
+}
+
+  Future<void> _handleCameraAndMic(Permission permission) async{
+  final status = await permission.request();
+  print(status.toString());
+
+
+  }
+
+Future<void> _sendCallNotification(String senderId, String receiverId, String channelId) async {
+  final _usersRef = FirebaseDatabase.instance.ref('users');
+  final senderSnapshot = await _usersRef.child(senderId).get();
+
+  if (senderSnapshot.exists) {
+    final senderData = senderSnapshot.value as Map<dynamic, dynamic>;
+    final senderName = senderData['username']; // Current user's name (sender)
+
+    // Fetch receiver's details (device token)
+    final receiverSnapshot = await _usersRef.child(receiverId).get();
+    if (receiverSnapshot.exists) {
+      final receiverData = receiverSnapshot.value as Map<dynamic, dynamic>;
+      final receiverToken = receiverData['deviceToken'];
+
+      // Send notification to the receiver
+      final get = get_server_key();
+      String token = await get.server_token();
+
+      final response = await http.post(
+        Uri.parse('https://fcm.googleapis.com/v1/projects/installmentapp-1cf69/messages:send'),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'message': {
+            'token': receiverToken,
+            'notification': {
+              'title': 'Incoming Video Call',
+              'body': 'From $senderName',
+            },
+            'data': {
+              'type': 'video_call',
+              'receiverId': receiverId,
+              'callerId': channelId,
+              'callerName': senderName,
+              'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
+              'android_channel_id': 'video_calls_channel',
+            },
+            'android': {
+              'priority': 'high',
+              'notification': {
+                'channel_id': 'video_calls_channel',
+                'sound': 'default',
+              }
+            },
+            'apns': {
+              'payload': {
+                'aps': {
+                  'sound': 'default',
+                  'category': 'VIDEO_CALL',
+                  'mutable-content': 1,
+                  'content-available': 1
+                }
+              }
+            }
+          }
+        }),
+      );
+      print(response.body);
+    }
   }
 }

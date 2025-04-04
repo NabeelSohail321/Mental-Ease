@@ -118,4 +118,33 @@ class AuthProvider with ChangeNotifier {
 
 
   }
+
+  Future<void> checkUserAndNavigate(BuildContext context) async {
+    User? user = _auth.currentUser;
+
+    if (user == null) {
+      // User is not logged in, navigate to Login page
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+            (Route<dynamic> route) => false,
+      );
+      return;
+    }
+
+    // Fetch role from Firebase Database
+    try {
+      DatabaseEvent event = await _dbRef.child(user.uid).child("role").once();
+
+      if (event.snapshot.exists) {
+        String role = event.snapshot.value.toString();
+        _navigateToRolePage(context, role);
+      } else {
+        _showError(context, "User role not found.");
+      }
+    } catch (error) {
+      _showError(context, "Error fetching user role.");
+    }
+  }
+
 }
