@@ -40,7 +40,45 @@ class PsychologistProfileViewProvider with ChangeNotifier {
 
   final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
 
+
+
+  Future<List<Map<String, dynamic>>> getAllFeedbacks(String doctorId) async {
+    final snapshot = await _dbRef.child('users/$doctorId/feedbacks').get();
+    if (!snapshot.exists) return [];
+
+    final feedbacks = <Map<String, dynamic>>[];
+    final data = Map<String, dynamic>.from(snapshot.value as Map);
+
+    data.forEach((key, value) {
+      final feedback = Map<String, dynamic>.from(value as Map);
+
+      // Handle the rating conversion safely
+      dynamic ratingValue = feedback['ratings'] ?? feedback['ratings'] ?? 0.0;
+      double rating;
+      if (ratingValue is int) {
+        rating = ratingValue.toDouble();
+      } else if (ratingValue is double) {
+        rating = ratingValue;
+      } else {
+        rating = 0.0; // Default value if invalid
+      }
+
+      feedbacks.add({
+        'id': key,
+        'rating': rating,
+        'comment': feedback['comment'] as String? ?? '',
+        'userId': feedback['userId'] as String? ?? '',
+        'username': feedback['username'] as String? ?? 'Anonymous',
+        'timestamp': feedback['timestamp'] as int? ?? 0,
+      });
+    });
+
+    // Sort by timestamp (newest first)
+    feedbacks.sort((a, b) => (b['timestamp'] as int).compareTo(a['timestamp'] as int));
+    return feedbacks;
+  }
   Future<void> fetchProfileData(String psychologistId) async {
     try {
       final snapshot = await _databaseRef.child("users").child(psychologistId).get();

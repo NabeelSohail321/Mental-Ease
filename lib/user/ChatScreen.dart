@@ -265,7 +265,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       _sendCallNotification(widget.senderId,widget.receiverId,channelId);
       await Navigator.push(context, MaterialPageRoute(builder: (context) {
-        return callPage(channelController,"broadcaster");
+        return callPage(channelController,"broadcaster", widget.receiverId);
       },));
     }
 

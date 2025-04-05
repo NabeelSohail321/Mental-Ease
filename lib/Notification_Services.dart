@@ -73,7 +73,9 @@ class NotificationServices {
   void firebaseInit(BuildContext context) {
     FirebaseMessaging.onMessage.listen((message) {
       if (message.data['type'] == 'video_call') {
-        _handleIncomingCall(context,message);
+        // _handleIncomingCall(context,message);
+        initLocalNotifications(context, message);
+        showNotification(message);
       } else {
         if (Platform.isAndroid) {
           initLocalNotifications(context, message);
@@ -85,7 +87,9 @@ class NotificationServices {
     // Handle when app is in background/terminated
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       if (message.data['type'] == 'video_call') {
-        _handleIncomingCall(context,message);
+        // _handleIncomingCall(context,message);
+        initLocalNotifications(context, message);
+        showNotification(message);
       }
     });
   }
@@ -177,7 +181,7 @@ class NotificationServices {
 
     switch (event.event) {
       case Event.actionCallAccept:
-        _onCallAccepted(context,event.body);
+        // _onCallAccepted(context,event.body);
         break;
       case Event.actionCallDecline:
         _onCallDeclined(event.body);
@@ -190,27 +194,27 @@ class NotificationServices {
     }
   }
 
-  void _onCallAccepted(BuildContext context,CallKitParams params) {
-
-    final effectiveContext = context ?? _globalContext;
-    if (effectiveContext == null) {
-      print('Error: No valid context available for navigation');
-      return;
-    }
-
-
-    Navigator.of(effectiveContext).push(
-      MaterialPageRoute(
-        builder: (_) => callPage("Mental Ease", "broadcaster")
-      ),
-    );
-
-
-
-    print('Call accepted from ${params.nameCaller}');
-    // Navigate to call screen:
-    // Navigator.push(context, MaterialPageRoute(builder: (_) => VideoCallScreen(callParams: params)));
-  }
+  // void _onCallAccepted(BuildContext context,CallKitParams params) {
+  //
+  //   final effectiveContext = context ?? _globalContext;
+  //   if (effectiveContext == null) {
+  //     print('Error: No valid context available for navigation');
+  //     return;
+  //   }
+  //
+  //
+  //   Navigator.of(effectiveContext).push(
+  //     MaterialPageRoute(
+  //       builder: (_) => callPage("Mental Ease", "broadcaster",)
+  //     ),
+  //   );
+  //
+  //
+  //
+  //   print('Call accepted from ${params.nameCaller}');
+  //   // Navigate to call screen:
+  //   // Navigator.push(context, MaterialPageRoute(builder: (_) => VideoCallScreen(callParams: params)));
+  // }
 
   void _onCallDeclined(CallKitParams params) {
     print('Call declined from ${params.nameCaller}');

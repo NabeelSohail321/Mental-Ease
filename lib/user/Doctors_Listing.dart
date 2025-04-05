@@ -382,7 +382,15 @@ class _DoctorsListingState extends State<DoctorsListing> {
                                             fontSize: screenWidth * 0.04,
                                           ),
                                         ),
-                                        SizedBox(height: screenHeight * 0.01),
+                                        SizedBox(height: screenHeight * 0.003),
+                                        Text(
+                                          doctor['isVerfied']?'Verified':"Not verified",
+                                          style: TextStyle(
+                                            color: doctor['isVerfied']? Colors.green: Colors.red,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: screenWidth * 0.028,
+                                          ),
+                                        ),
                                         ConstrainedBox(
                                           constraints: BoxConstraints(
                                             maxHeight: screenHeight * 0.04,

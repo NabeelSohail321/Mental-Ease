@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'dart:async';
@@ -7,8 +9,9 @@ import 'Video_Call_Service.dart';
 class callPage extends StatefulWidget {
   final String? channelName;
   final String? role;
+  final String? DoctorId;
 
-  callPage(this.channelName, this.role);
+  callPage(this.channelName, this.role, this.DoctorId);
 
   @override
   State<callPage> createState() => _callPageState();
@@ -21,6 +24,11 @@ class _callPageState extends State<callPage> {
   bool viewPanel = false;
   late RtcEngine _engine;
   String channelId  = 'call_464yLmzMzJeHsymcFkMGbIIKqUJ2_Xd4evN6WJ6PHlba3nBMrBEVt3O42';
+  final _uid = FirebaseAuth.instance.currentUser?.uid;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref().child('users');
+  String? role;
+  bool isSubmitting = false;
+
 
   // Position for the floating local video
   Offset _localVideoPosition = Offset(20, 80);
@@ -41,6 +49,8 @@ class _callPageState extends State<callPage> {
   }
 
   Future<void> initialize() async {
+    DatabaseEvent event = await _dbRef.child(_uid!).child("role").once();
+    role = event.snapshot.value.toString();
     if (appId.isEmpty) {
       setState(() {
         _infoStrings.add("App Id is missing Please Provide App Id in Video_Call_Service.dart");
@@ -250,55 +260,59 @@ class _callPageState extends State<callPage> {
 
   void _endCall() {
     _engine.leaveChannel();
-    Navigator.pop(context);
-    _showFeedbackPrompt();
+
+    if (role == 'user') {
+      // Show feedback first
+      _showFeedbackPrompt().then((_) {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      });
+    } else {
+      Navigator.pop(context);
+    }
   }
 
-  void _showFeedbackPrompt() {
-    showDialog(
+  Future<void> _showFeedbackPrompt() async {
+    bool? wantFeedback = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text("Session Completed"),
-              content: Text("Would you like to provide feedback about "),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _showFeedbackForm();
-                  },
-                  child: Text("Yes"),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text("No"),
-                ),
-              ],
-            );
-          },
+        return AlertDialog(
+          title: Text("Session Completed"),
+          content: Text("Would you like to provide feedback about your session?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text("Yes"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text("No"),
+            ),
+          ],
         );
       },
     );
+
+    if (wantFeedback == true && mounted) {
+      await _showFeedbackForm();
+    }
   }
 
-  void _showFeedbackForm() {
+  Future<void> _showFeedbackForm() async {
     double rating = 3.0;
     TextEditingController feedbackController = TextEditingController();
     bool isSubmitting = false;
 
-    showDialog(
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text("Feedback for "),
+              title: Text("Feedback"),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -307,29 +321,20 @@ class _callPageState extends State<callPage> {
                     SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.star, color: rating >= 1 ? Colors.amber : Colors.grey),
-                        Icon(Icons.star, color: rating >= 2 ? Colors.amber : Colors.grey),
-                        Icon(Icons.star, color: rating >= 3 ? Colors.amber : Colors.grey),
-                        Icon(Icons.star, color: rating >= 4 ? Colors.amber : Colors.grey),
-                        Icon(Icons.star, color: rating >= 5 ? Colors.amber : Colors.grey),
-                      ],
+                      children: List.generate(5, (index) => Icon(
+                        Icons.star,
+                        color: rating >= index + 1 ? Colors.amber : Colors.grey,
+                      )),
                     ),
                     Slider(
                       value: rating,
                       min: 1,
                       max: 5,
                       divisions: 4,
-                      label: rating.toStringAsFixed(1),
-                      onChanged: (value) {
-                        setState(() {
-                          rating = value;
-                        });
-                      },
+                      onChanged: (value) => setState(() => rating = value),
                     ),
                     SizedBox(height: 20),
-                    Text("Share your experience (max 300 words):"),
-                    SizedBox(height: 10),
+                    Text("Share your experience:"),
                     TextField(
                       controller: feedbackController,
                       maxLines: 4,
@@ -339,19 +344,13 @@ class _callPageState extends State<callPage> {
                         hintText: "How was your session?",
                       ),
                     ),
-                    if (isSubmitting)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: CircularProgressIndicator(),
-                      ),
+                    if (isSubmitting) CircularProgressIndicator(),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: isSubmitting ? null : () {
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: isSubmitting ? null : () => Navigator.of(context).pop(),
                   child: Text("Cancel"),
                 ),
                 ElevatedButton(
@@ -371,33 +370,89 @@ class _callPageState extends State<callPage> {
     );
   }
 
-  Future<void> _submitFeedback(double rating, String feedback) async {
+  Future<void> _submitFeedback(double newRating, String feedback) async {
     try {
-      // Simulate network request
-      await Future.delayed(Duration(seconds: 1));
+      setState(() => isSubmitting = true);
 
-      // Here you would typically send the feedback to your backend
-      print("Feedback submitted:");
-      print("Rating: $rating");
-      print("Comments: $feedback");
+      // 1. Get references
+      final doctorRef = _dbRef.child(widget.DoctorId!);
+      final userRef = _dbRef.child(_uid!);
 
-      // Show confirmation
+      // 2. Fetch current user data
+      final userSnapshot = await userRef.get();
+      if (!userSnapshot.exists) {
+        throw Exception('User profile not found');
+      }
+
+      final userData = Map<String, dynamic>.from(userSnapshot.value as Map);
+      final username = userData['username']?.toString() ?? 'Anonymous';
+
+      // 3. Generate unique key for new feedback
+      final newFeedbackKey = doctorRef.child('feedbacks').push().key;
+      if (newFeedbackKey == null) {
+        throw Exception('Could not generate feedback key');
+      }
+
+      // 4. Create feedback object with timestamp
+      final feedbackData = <String, dynamic>{
+        'ratings': newRating,  // Changed from 'ratings' to 'rating' for consistency
+        'comment': feedback,
+        'userId': _uid,
+        'username': username,
+        'timestamp': ServerValue.timestamp,
+      };
+
+      // 5. Prepare updates - adds new feedback while preserving old ones
+      final updates = <String, dynamic>{
+        'feedbacks/$newFeedbackKey': feedbackData,
+      };
+
+      // 6. Calculate new average rating including this feedback
+      final doctorSnapshot = await doctorRef.get();
+      final doctorData = Map<String, dynamic>.from(doctorSnapshot.value as Map? ?? {});
+
+      // Get current average rating (safe parsing)
+      double currentAverageRating = 0.0;
+      if (doctorData['ratings'] != null) {
+        currentAverageRating = (doctorData['ratings'] is num)
+            ? (doctorData['ratings'] as num).toDouble()
+            : double.tryParse(doctorData['rating'].toString()) ?? 0.0;
+      }
+
+      // Get all existing feedbacks
+      final existingFeedbacks = doctorData['feedbacks'] as Map<dynamic, dynamic>? ?? {};
+      final allRatings = [
+        newRating,
+        ...existingFeedbacks.values.map((f) {
+          return (f['ratings'] is num)
+              ? (f['ratings'] as num).toDouble()
+              : double.tryParse(f['ratings'].toString()) ?? 0.0;
+        })
+      ];
+
+      // Calculate new average
+      final updatedRating = (newRating+currentAverageRating) /2;
+      updates['ratings'] = updatedRating.toString();
+
+      // 7. Perform the update
+      await doctorRef.update(Map<String, Object?>.from(updates));
+
+      // 8. Show confirmation
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Thank you for your feedback!"))
+            const SnackBar(content: Text("Thank you for your feedback!"))
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to submit feedback. Please try again."))
+            SnackBar(content: Text("Error: ${e.toString()}"))
         );
       }
+    } finally {
+      setState(() => isSubmitting = false);
     }
-  }
-
-
-  @override
+  }  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
