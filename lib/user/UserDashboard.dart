@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../Auth_Provider/login_Provider.dart';
 import '../Login.dart';
+import 'Assesment_Options.dart';
 import 'Doctors_Listing.dart';
 import 'Inbox.dart';
 import 'Profile.dart';
@@ -261,7 +262,7 @@ class _UserdashboardState extends State<Userdashboard> {
                       padding: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.width*0.03),
                       child: ListTile(
                         title: Text("Self-Assessment",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold,fontSize: MediaQuery.of(context).size.height*0.025),),
-                        subtitle: Text("40 Questions",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold,fontSize: MediaQuery.of(context).size.height*0.025),),
+                        subtitle: Text("60 Questions",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold,fontSize: MediaQuery.of(context).size.height*0.025),),
                         trailing: Image.asset('assets/images/Questionaire.png',width: MediaQuery.of(context).size.width*0.2,),
                       ),
                     ),
@@ -269,7 +270,11 @@ class _UserdashboardState extends State<Userdashboard> {
                       height: MediaQuery.of(context).size.width*0.15,
                       width: MediaQuery.of(context).size.width * 0.8,
                       child: ElevatedButton(
-                          onPressed: (){},
+                          onPressed: (){
+                            Navigator.push(context, MaterialPageRoute(builder: (context) {
+                              return Assessment_Options();
+                            },));
+                          },
                           child: Text('Start Now',style: TextStyle(fontWeight: FontWeight.bold),),
                         style: ElevatedButton.styleFrom(
         

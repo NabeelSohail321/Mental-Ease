@@ -51,6 +51,7 @@ dependencies:
   uuid: ^3.0.7
   flutter_callkit_incoming: any
   permission_handler: ^11.4.0
+  clipboard: ^0.1.3
 
 
 

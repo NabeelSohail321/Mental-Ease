@@ -64,24 +64,26 @@ class _InboxScreenState extends State<InboxScreen> {
         itemCount: chatProvider.userChats.length,
         itemBuilder: (context, index) {
           final chat = chatProvider.userChats[index];
-          final otherUserId = chat['otherUserId'];
-          final otherUserName = chat['otherUserName'];
-          final otherUserImage = chat['otherUserImage'];
-          final lastMessage = chat['lastMessage'];
-          final timestamp = chat['timestamp'];
-          final unreadCount = chat['unreadCount'];
+
+          // Safe property access with null checks
+          final otherUserId = chat?['otherUserId'] ?? '';
+          final otherUserName = chat?['otherUserName'] ?? 'Unknown';
+          final otherUserImage = chat?['otherUserImage'];
+          final lastMessage = chat?['lastMessage'] ?? 'No messages';
+          final timestamp = chat?['timestamp'] ?? DateTime.now().millisecondsSinceEpoch;
+          final unreadCount = chat?['unreadCount'] ?? 0;
 
           return ListTile(
             leading: CircleAvatar(
-              backgroundImage: otherUserImage != null
+              backgroundImage: otherUserImage != null && otherUserImage.isNotEmpty
                   ? NetworkImage(otherUserImage)
                   : null,
-              child: otherUserImage == null
-                  ? Text(otherUserName[0]) // Fallback to the first letter of the name
+              child: otherUserImage == null || otherUserImage.isEmpty
+                  ? Text(otherUserName.isNotEmpty ? otherUserName[0] : '?')
                   : null,
             ),
             title: Text(otherUserName),
-            subtitle: Text(lastMessage ?? 'No messages'),
+            subtitle: Text(lastMessage),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -95,12 +97,13 @@ class _InboxScreenState extends State<InboxScreen> {
                 if (unreadCount > 0)
                   CircleAvatar(
                     radius: 12,
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
                     child: Text(unreadCount.toString()),
                   ),
               ],
             ),
             onTap: () {
-              // Navigate to the chat screen
               Navigator.push(
                 context,
                 MaterialPageRoute(

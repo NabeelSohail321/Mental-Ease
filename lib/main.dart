@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:mental_ease/user/Model_Provider.dart';
+import 'package:mental_ease/user/Providers/Appointment_provider/Physical_Appointment_Provider.dart';
 import 'package:mental_ease/user/Providers/Chat_Providers/Chat_Provider.dart';
 import 'package:mental_ease/user/Providers/Dashboard_Provider/Dashboard_Provider.dart';
 import 'package:mental_ease/user/Providers/Doctors_Provider/DoctorProfileProvider.dart';
@@ -33,7 +35,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => PsychologistProvider()),
         ChangeNotifierProvider(create: (_) => PsychologistProfileProvider()),
         ChangeNotifierProvider(create: (_) => PsychologistProfileViewProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider())
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => ModelProvider()),
+        ChangeNotifierProvider(create: (_) => AppointmentProvider()),
 
 
       ],

@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:mental_ease/user/ChatScreen.dart';
 import 'package:provider/provider.dart';
 import '../Phycologist/Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
+import 'Physical_Appoinment.dart';
 import 'Providers/Doctors_Provider/DoctorProfileProvider.dart';
 
 class DoctorProfile extends StatefulWidget {
@@ -24,6 +26,7 @@ class _DoctorProfileState extends State<DoctorProfile> {
   bool _isExpandedWeekDays = false;
   bool _showMoreSlots = false;
   int _feedbackDisplayLimit = 5;
+  String? uid = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
@@ -197,6 +200,189 @@ class _DoctorProfileState extends State<DoctorProfile> {
     );
   }
 
+
+  Future<void> _showReportDialog(BuildContext context) async {
+    String? reportReason;
+    String customReport = '';
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+
+    final result = await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 16 : 24,
+                vertical: 24,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isSmallScreen ? screenWidth * 0.9 : 500,
+                  minWidth: isSmallScreen ? screenWidth * 0.8 : 400,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Report Doctor',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 20 : 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: isSmallScreen ? 16 : 24),
+
+                      // Reason Dropdown
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Select reason',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 12 : 16,
+                            vertical: isSmallScreen ? 14 : 16,
+                          ),
+                        ),
+                        isExpanded: true,
+                        items: [
+                          'Inappropriate Behavior',
+                          'Unprofessional Conduct',
+                          'Fake Profile',
+                          'Other'
+                        ].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            reportReason = value;
+                          });
+                        },
+                      ),
+
+                      // Custom Report Field (conditionally shown)
+                      if (reportReason == 'Other') ...[
+                        SizedBox(height: isSmallScreen ? 16 : 24),
+                        TextField(
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            labelText: 'Describe your issue',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 12 : 16,
+                              vertical: isSmallScreen ? 12 : 16,
+                            ),
+                          ),
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 14 : 16,
+                          ),
+                          onChanged: (value) {
+                            customReport = value;
+                          },
+                        ),
+                      ],
+
+                      // Buttons Row
+                      SizedBox(height: isSmallScreen ? 24 : 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isSmallScreen ? 12 : 16,
+                                vertical: isSmallScreen ? 8 : 12,
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: isSmallScreen ? 8 : 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (reportReason != null) {
+                                if (reportReason == 'Other' && customReport.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Please describe your issue'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                Navigator.pop(context, {
+                                  'reason': reportReason,
+                                  'customReport': customReport,
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isSmallScreen ? 12 : 16,
+                                vertical: isSmallScreen ? 8 : 12,
+                              ),
+                            ),
+                            child: Text(
+                              'Submit',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 14 : 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId != null) {
+        final reportRef = FirebaseDatabase.instance.ref('reports').push();
+        await reportRef.set({
+          'doctorId': widget.doctorId,
+          'userId': userId,
+          'reason': result['reason'],
+          'customReport': result['customReport'],
+          'timestamp': ServerValue.timestamp,
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Report submitted successfully'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   String _formatDate(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
     return '${date.day}/${date.month}/${date.year}';
@@ -217,9 +403,19 @@ class _DoctorProfileState extends State<DoctorProfile> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: Icon(Icons.info_outline, color: Colors.black, size: 30),
-            onPressed: () {},
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'report',
+                child: Text('Report'),
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'report') {
+                _showReportDialog(context);
+              }
+            },
           ),
         ],
       ),
@@ -508,7 +704,14 @@ class _DoctorProfileState extends State<DoctorProfile> {
                   height: screenHeight * 0.07,
                   width: screenWidth * 0.7,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) {
+                        return DoctorDetailsScreen(
+                          doctorId: widget.doctorId as String,
+                          currentUserId: uid as String,
+                        );
+                      },));
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF006064),
                       foregroundColor: Colors.white,
