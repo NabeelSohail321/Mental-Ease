@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 class PsychologistProvider with ChangeNotifier {
   bool _isListed = true; // Default value
@@ -36,6 +37,8 @@ class PsychologistProvider with ChangeNotifier {
 
 
 
+
+
 class PsychologistProfileProvider with ChangeNotifier {
   String? _profileImageUrl;
   String? _degreeImageUrl;
@@ -51,8 +54,11 @@ class PsychologistProfileProvider with ChangeNotifier {
   String? _appointmentFee;
   String? _stripeId;
   String? _email;
-  Map<String, List<TimeOfDay>>? _onlineTimeSlots; // New field for online time slots
+  Map<String, List<TimeOfDay>>? _onlineTimeSlots;
+  double? _ratings;
+  bool? _isVerified;
 
+  // Getters
   String? get profileImageUrl => _profileImageUrl;
   String? get degreeImageUrl => _degreeImageUrl;
   String? get description => _description;
@@ -68,16 +74,15 @@ class PsychologistProfileProvider with ChangeNotifier {
   String? get stripeId => _stripeId;
   String? get email => _email;
   Map<String, List<TimeOfDay>>? get onlineTimeSlots => _onlineTimeSlots;
+  double? get ratings => _ratings;
+  bool? get isVerified => _isVerified;
 
   final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  Future<void> fetchProfileData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
+  Future<void> fetchProfileData(String psychologistId) async {
     try {
-      final snapshot = await _databaseRef.child("users").child(user.uid).get();
+      final snapshot = await _databaseRef.child("users").child(psychologistId).get();
       if (snapshot.exists && snapshot.value is Map) {
         final data = Map<String, dynamic>.from(snapshot.value as Map);
 
@@ -97,9 +102,11 @@ class PsychologistProfileProvider with ChangeNotifier {
         _appointmentFee = data['appointmentFee'] as String?;
         _stripeId = data['stripeId'] as String?;
         _email = data['email'] as String?;
+        _isVerified = data['isVerified'] as bool? ?? false;
         _onlineTimeSlots = data['onlineTimeSlots'] != null
-            ? _parseOnlineTimeSlots(data['onlineTimeSlots'])
+            ? _parseAndFilterOnlineTimeSlots(data['onlineTimeSlots'])
             : null;
+        _ratings = double.tryParse(data['ratings']?.toString() ?? "0.0") ?? 0.0;
 
         notifyListeners();
       }
@@ -108,21 +115,46 @@ class PsychologistProfileProvider with ChangeNotifier {
     }
   }
 
-  Map<String, List<TimeOfDay>> _parseOnlineTimeSlots(dynamic data) {
-    final Map<String, List<TimeOfDay>> slots = {};
-    if (data is Map) {
-      data.forEach((key, value) {
-        if (value is List) {
-          slots[key] = value.map((time) => _parseTime(time)).toList();
-        }
-      });
-    }
-    return slots;
-  }
+  Map<String, List<TimeOfDay>> _parseAndFilterOnlineTimeSlots(dynamic timeSlotsData) {
+    final Map<String, List<TimeOfDay>> result = {};
+    if (timeSlotsData is! Map) return result;
 
-  TimeOfDay _parseTime(String time) {
-    final parts = time.split(':');
-    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final currentTime = TimeOfDay.fromDateTime(now);
+
+    timeSlotsData.forEach((dateStr, times) {
+      try {
+        final date = DateTime.parse(dateStr);
+
+        // Only include dates that are today or in the future
+        if (date.isAfter(todayDate.subtract(const Duration(days: 1)))) {
+          if (times is List) {
+            final timeList = times.map((timeStr) {
+              final parts = timeStr.toString().split(':');
+              return TimeOfDay(
+                hour: int.parse(parts[0]),
+                minute: int.parse(parts[1]),
+              );
+            }).toList();
+
+            // If it's today, filter out past time slots
+            if (date == todayDate) {
+              result[dateStr] = timeList.where((time) {
+                return time.hour > currentTime.hour ||
+                    (time.hour == currentTime.hour && time.minute > currentTime.minute);
+              }).toList();
+            } else {
+              result[dateStr] = timeList;
+            }
+          }
+        }
+      } catch (e) {
+        print('Error parsing date $dateStr: $e');
+      }
+    });
+
+    return result..removeWhere((key, value) => value.isEmpty);
   }
 
   Future<void> updateProfileData({
@@ -144,7 +176,7 @@ class PsychologistProfileProvider with ChangeNotifier {
 
     try {
       final updatedData = {
-        'name': name ?? _name,
+        'username': name ?? _name,
         'description': description ?? _description,
         'phoneNumber': phoneNumber ?? _phoneNumber,
         'address': address ?? _address,
@@ -157,13 +189,15 @@ class PsychologistProfileProvider with ChangeNotifier {
         'stripeId': stripeId ?? _stripeId,
         'onlineTimeSlots': onlineTimeSlots != null
             ? _serializeOnlineTimeSlots(onlineTimeSlots)
-            : _onlineTimeSlots,
+            : _onlineTimeSlots != null
+            ? _serializeOnlineTimeSlots(_onlineTimeSlots!)
+            : null,
       };
 
       await _databaseRef.child("users").child(user.uid).update(updatedData);
 
-      // Update local variables
-      _name = updatedData['name'] as String?;
+      // Update local state
+      _name = updatedData['username'] as String?;
       _description = updatedData['description'] as String?;
       _phoneNumber = updatedData['phoneNumber'] as String?;
       _address = updatedData['address'] as String?;
@@ -250,15 +284,102 @@ class PsychologistProfileProvider with ChangeNotifier {
         _stripeId!.isNotEmpty;
   }
 
-  void removePastSlots() {
-    final now = DateTime.now();
-    _onlineTimeSlots?.removeWhere((date, slots) {
-      final slotDate = DateTime.parse(date);
-      if (slotDate.isBefore(now)) {
-        return true; // Remove past slots
+  // Time Slot Management Methods
+  List<DateTime> getAvailableDates() {
+    if (_onlineTimeSlots == null) return [];
+    return _onlineTimeSlots!.keys.map((dateStr) => DateTime.parse(dateStr)).toList()..sort();
+  }
+
+  List<TimeOfDay> getAvailableTimesForDate(DateTime date) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    return _onlineTimeSlots?[dateStr] ?? [];
+  }
+
+  bool isTimeSlotAvailable(DateTime date, TimeOfDay time) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final slots = _onlineTimeSlots?[dateStr];
+    if (slots == null) return false;
+    return slots.any((slot) => slot.hour == time.hour && slot.minute == time.minute);
+  }
+
+  Future<void> addTimeSlot(DateTime date, TimeOfDay time) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final timeStr = '${time.hour}:${time.minute}';
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final slotRef = _databaseRef.child("users").child(user.uid).child("onlineTimeSlots").child(dateStr);
+      final snapshot = await slotRef.get();
+
+      List<dynamic> existingSlots = [];
+      if (snapshot.exists) {
+        existingSlots = List.from(snapshot.value as List);
       }
-      return false;
-    });
-    notifyListeners();
+
+      if (!existingSlots.contains(timeStr)) {
+        existingSlots.add(timeStr);
+        existingSlots.sort((a, b) {
+          final aParts = a.toString().split(':');
+          final bParts = b.toString().split(':');
+          final aHour = int.parse(aParts[0]);
+          final aMin = int.parse(aParts[1]);
+          final bHour = int.parse(bParts[0]);
+          final bMin = int.parse(bParts[1]);
+          if (aHour == bHour) return aMin.compareTo(bMin);
+          return aHour.compareTo(bHour);
+        });
+
+        await slotRef.set(existingSlots);
+
+        // Update local state
+        _onlineTimeSlots ??= {};
+        _onlineTimeSlots![dateStr] = existingSlots.map((t) => _parseTime(t.toString())).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      print("Error adding time slot: $e");
+    }
+  }
+
+  Future<void> removeTimeSlot(DateTime date, TimeOfDay time) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final timeStr = '${time.hour}:${time.minute}';
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final slotRef = _databaseRef.child("users").child(user.uid).child("onlineTimeSlots").child(dateStr);
+      final snapshot = await slotRef.get();
+
+      if (snapshot.exists) {
+        List<dynamic> slots = List.from(snapshot.value as List);
+        slots.remove(timeStr);
+
+        if (slots.isEmpty) {
+          await slotRef.remove();
+        } else {
+          await slotRef.set(slots);
+        }
+
+        // Update local state
+        _onlineTimeSlots ??= {};
+        if (slots.isEmpty) {
+          _onlineTimeSlots!.remove(dateStr);
+        } else {
+          _onlineTimeSlots![dateStr] = slots.map((t) => _parseTime(t.toString())).toList();
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      print("Error removing time slot: $e");
+    }
+  }
+
+  TimeOfDay _parseTime(String time) {
+    final parts = time.split(':');
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 }

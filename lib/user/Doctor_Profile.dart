@@ -3,7 +3,8 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:mental_ease/user/ChatScreen.dart';
 import 'package:provider/provider.dart';
-import '../Phycologist/Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
+// import '../Phycologist/Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
+import 'Online_Appointment.dart';
 import 'Physical_Appoinment.dart';
 import 'Providers/Doctors_Provider/DoctorProfileProvider.dart';
 
@@ -34,6 +35,193 @@ class _DoctorProfileState extends State<DoctorProfile> {
     final provider = Provider.of<PsychologistProfileViewProvider>(context, listen: false);
     provider.fetchProfileData(widget.doctorId!);
   }
+
+
+  Future<void> _showAppointmentOptions(BuildContext context, String doctorId) async {
+    // Check if doctor is verified
+    final doctorProvider = Provider.of<PsychologistProfileViewProvider>(context, listen: false);
+    await doctorProvider.fetchProfileData(doctorId); // Ensure data is loaded
+    bool isVerified = doctorProvider.isVerfied ?? false;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400; // Adjust breakpoint as needed
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 16 : 24,
+            vertical: 24,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: isSmallScreen ? screenWidth * 0.9 : 500,
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Choose Appointment Type',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 20 : 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: isSmallScreen ? 16 : 24),
+
+                  if (isVerified)
+                    Text(
+                      doctorProvider.onlineTimeSlots?.isNotEmpty ?? false
+                          ? 'This doctor offers both appointment types:'
+                          : 'This doctor currently has no online availability',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                  else
+                    Text(
+                      'This doctor is not verified for online appointments yet.',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                  SizedBox(height: isSmallScreen ? 16 : 24),
+
+                  // Physical Appointment Button
+                  _buildResponsiveOptionButton(
+                    context,
+                    isVerified ? 'Physical Appointment' : 'Physical Appointment Only',
+                    Icons.location_on,
+                    Colors.blue,
+                    isSmallScreen,
+                        () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DoctorDetailsScreen(
+                            doctorId: doctorId,
+                            currentUserId: uid as String,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  if (isVerified) ...[
+                    SizedBox(height: isSmallScreen ? 12 : 16),
+                    // Online Appointment Button
+                    _buildResponsiveOptionButton(
+                      context,
+                      'Online Appointment',
+                      Icons.video_call,
+                      doctorProvider.onlineTimeSlots?.isNotEmpty ?? false
+                          ? Colors.green
+                          : Colors.grey,
+                      isSmallScreen,
+                          () {
+                        if (doctorProvider.onlineTimeSlots?.isNotEmpty ?? false) {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OnlineAppointmentScreen(
+                                doctorId: doctorId,
+                                currentUserId: uid as String,
+                              ),
+                            ),
+                          );
+                        } else {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("No online time slots available. Please check back later."),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+
+                  SizedBox(height: isSmallScreen ? 16 : 24),
+
+                  // Cancel Button
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        vertical: isSmallScreen ? 12 : 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 16 : 18,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildResponsiveOptionButton(
+      BuildContext context,
+      String text,
+      IconData icon,
+      Color color,
+      bool isSmallScreen,
+      VoidCallback onPressed,
+      ) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: EdgeInsets.symmetric(
+          vertical: isSmallScreen ? 12 : 16,
+          horizontal: isSmallScreen ? 8 : 16,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white),
+          SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 14 : 16,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   Future<void> _showFeedbacksDialog(BuildContext context) async {
     final provider = Provider.of<PsychologistProfileViewProvider>(context, listen: false);
@@ -705,12 +893,7 @@ class _DoctorProfileState extends State<DoctorProfile> {
                   width: screenWidth * 0.7,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) {
-                        return DoctorDetailsScreen(
-                          doctorId: widget.doctorId as String,
-                          currentUserId: uid as String,
-                        );
-                      },));
+                      _showAppointmentOptions(context, widget.doctorId as String);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF006064),

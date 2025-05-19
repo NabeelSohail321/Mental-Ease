@@ -1,10 +1,17 @@
+import 'dart:convert';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_database/firebase_database.dart';
 
+import '../serverkey.dart';
 import 'Appointment_ConfirmationScreen.dart';
 import 'PhysicalAppointment_Details.dart';
 import 'Providers/Appointment_provider/Physical_Appointment_Provider.dart';
+
+import 'package:http/http.dart' as http;
 
 
 class DoctorDetailsScreen extends StatefulWidget {
@@ -86,21 +93,33 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
 
     final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
 
-    // Check for existing appointments first
-    final appointments = await appointmentProvider.getUserAppointments(widget.currentUserId);
-    final hasPendingAppointment = appointments.any((appt) =>
-    appt['appointmentDay'] == selectedDay &&
-        appt['status'] == 'pending' &&
-        appt['doctorId'] == widget.doctorId);
-
-    if (hasPendingAppointment) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You already have a pending appointment with this doctor on the selected day')),
-      );
-      return;
-    }
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
 
     try {
+      // Check for existing appointments first
+      final appointments = await appointmentProvider.getUserAppointments(widget.currentUserId);
+      final hasPendingAppointment = appointments.any((appt) =>
+      appt['appointmentDay'] == selectedDay &&
+          appt['status'] == 'pending' &&
+          appt['doctorId'] == widget.doctorId);
+
+      if (hasPendingAppointment) {
+        Navigator.pop(context); // Dismiss loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You already have a pending appointment with this doctor on the selected day')),
+        );
+        return;
+      }
+
       final success = await appointmentProvider.bookPhysicalAppointment(
         userId: widget.currentUserId,
         doctorId: widget.doctorId,
@@ -110,6 +129,16 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
       );
 
       if (success) {
+        await _sendAppointmentNotificationToBoth(
+            psychologistId: widget.doctorId,
+            patientId: FirebaseAuth.instance.currentUser!.uid,
+            appointmentDate: selectedDay!,
+            appointmentType: "Physical",
+            context: context
+        );
+
+        Navigator.pop(context); // Dismiss loading dialog before navigation
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -121,14 +150,19 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
             ),
           ),
         );
+      } else {
+        Navigator.pop(context); // Dismiss loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to book appointment')),
+        );
       }
     } catch (e) {
+      Navigator.pop(context); // Dismiss loading dialog on error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to book appointment: $e')),
       );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -353,5 +387,138 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
         ],
       ),
     );
+  }
+}
+
+Future<void> _sendAppointmentNotificationToBoth({
+  required String psychologistId,
+  required String patientId,
+  required String appointmentDate,  // Changed to String
+  // required TimeOfDay appointmentTime,
+  required String appointmentType,
+  required BuildContext context
+}) async {
+  final _usersRef = FirebaseDatabase.instance.ref('users');
+
+  // Get both users' data in parallel
+  final psychologistSnapshot = await _usersRef.child(psychologistId).get();
+  final patientSnapshot = await _usersRef.child(patientId).get();
+
+  if (!psychologistSnapshot.exists || !patientSnapshot.exists) return;
+
+  final psychologistData = psychologistSnapshot.value as Map<dynamic, dynamic>;
+  final patientData = patientSnapshot.value as Map<dynamic, dynamic>;
+
+  final psychologistName = psychologistData['username'];
+  final patientName = patientData['username'];
+  final psychologistToken = psychologistData['deviceToken'];
+  final patientToken = patientData['deviceToken'];
+
+  // Parse the date string to DateTime for formatting
+  // final dateTime = DateTime.parse(appointmentDate);
+  // final formattedDate = DateFormat('MMMM d, y').format(dateTime);
+  // final formattedTime = appointmentTime.format(context);
+
+  // Get FCM server token
+  final get = get_server_key();
+  final String token = await get.server_token();
+
+  // Prepare common notification components
+  final commonNotificationData = {
+    'appointmentDate': appointmentDate,  // Keep as original string
+    // 'appointmentTime': '${appointmentTime.hour}:${appointmentTime.minute}',
+    'appointmentType': appointmentType,
+    'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
+    'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+  };
+
+  // Send to psychologist
+  if (psychologistToken != null && psychologistToken.isNotEmpty) {
+    await _sendSingleNotification(
+      token: token,
+      receiverToken: psychologistToken,
+      title: 'New Physical Appointment Scheduled',
+      body: 'With $patientName on $appointmentDate' ,
+      data: {
+        ...commonNotificationData,
+        'type': 'appointment_scheduled_psychologist',
+        'patientId': patientId,
+        'patientName': patientName,
+      },
+    );
+  }
+
+  // Send to patient
+  if (patientToken != null && patientToken.isNotEmpty) {
+    await _sendSingleNotification(
+      token: token,
+      receiverToken: patientToken,
+      title: 'Physical Appointment Confirmed',
+      body: 'With $psychologistName on $appointmentDate ',
+      data: {
+        ...commonNotificationData,
+        'type': 'appointment_scheduled_patient',
+        'psychologistId': psychologistId,
+        'psychologistName': psychologistName,
+      },
+    );
+  }
+}
+
+Future<void> _sendSingleNotification({
+  required String token,
+  required String receiverToken,
+  required String title,
+  required String body,
+  required Map<String, dynamic> data,
+})
+async {
+  try {
+    final response = await http.post(
+      Uri.parse('https://fcm.googleapis.com/v1/projects/installmentapp-1cf69/messages:send'),
+      headers: <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'message': {
+          'token': receiverToken,
+          'notification': {
+            'title': title,
+            'body': body,
+          },
+          'data': data,
+          'android': {
+            'priority': 'high',
+            'notification': {
+              'channel_id': 'appointments_channel',
+              'sound': 'default',
+              'icon': '@mipmap/ic_notification',
+              'color': '#006064',
+            }
+          },
+          'apns': {
+            'payload': {
+              'aps': {
+                'sound': 'default',
+                'badge': 1,
+                'category': 'APPOINTMENT',
+                'mutable-content': 1
+              }
+            }
+          }
+        }
+      }),
+    );
+
+
+    if (response.statusCode != 200) {
+      print('Failed to send notification: ${response.body}');
+    }
+    else{
+      print('Notification sent');
+    }
+  } catch (e) {
+    print('Error sending notification: $e');
   }
 }

@@ -122,9 +122,12 @@ class _PhycologistDashboardState extends State<PhycologistDashboard> {
         actions: [
           TextButton(
             onPressed: () {
+
               Navigator.pop(context);
+
+
             },
-            child: Text("Complete Now"),
+            child: Text("ok"),
           ),
         ],
       ),

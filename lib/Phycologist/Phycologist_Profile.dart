@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +33,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, () {
-      context.read<PsychologistProfileProvider>().fetchProfileData().then((_) {
+      context.read<PsychologistProfileProvider>().fetchProfileData(FirebaseAuth.instance.currentUser!.uid).then((_) {
         final provider = context.read<PsychologistProfileProvider>();
         if (provider.clinicTiming != null) {
           _clinicTimingController.text = provider.clinicTiming!;
@@ -57,6 +58,10 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
       });
     });
   }
+
+
+
+
 
   TimeOfDay? _parseTime(String time) {
     try {
@@ -182,9 +187,9 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
   Future<void> _selectDayAndTimeSlots() async {
     final DateTime? selectedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(Duration(days: 1)), // Start from tomorrow
-      firstDate: DateTime.now().add(Duration(days: 1)), // Prevent selecting today
-      lastDate: DateTime.now().add(Duration(days: 35)), // Max 5 weeks
+      initialDate: DateTime.now().add(Duration(days: 1)),
+      firstDate: DateTime.now().add(Duration(days: 1)),
+      lastDate: DateTime.now().add(Duration(days: 35)),
     );
 
     if (selectedDate != null) {
@@ -196,14 +201,75 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
         return;
       }
 
+      // Ask how many slots the user wants to add (1-6)
+      final int? slotCount = await showDialog<int>(
+        context: context,
+        builder: (BuildContext context) {
+          int selectedCount = 1;
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: Text('Select Number of Time Slots'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('How many time slots do you want to add for this day?'),
+                    SizedBox(height: 20),
+                    DropdownButton<int>(
+                      value: selectedCount,
+                      items: List.generate(6, (index) => index + 1)
+                          .map((count) => DropdownMenuItem(
+                        value: count,
+                        child: Text('$count slot${count > 1 ? 's' : ''}'),
+                      ))
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() => selectedCount = value!);
+                      },
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, selectedCount),
+                    child: Text('Confirm'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+
+      if (slotCount == null || slotCount < 1) return;
+
       final List<TimeOfDay> timeSlots = [];
-      for (int i = 0; i < 6; i++) { // Max 6 slots per day
+      TimeOfDay? lastSelectedTime;
+
+      for (int i = 0; i < slotCount; i++) {
         final TimeOfDay? selectedTime = await showTimePicker(
           context: context,
-          initialTime: TimeOfDay.now(),
+          initialTime: lastSelectedTime ?? TimeOfDay.now(),
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Select Time Slot ${i + 1}',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 10),
+                  if (child != null) child,
+                ],
+              ),
+            );
+          },
         );
+
         if (selectedTime != null) {
-          // Ensure the selected time is in the future
+          // Validate the selected time
           final now = DateTime.now();
           final selectedDateTime = DateTime(
             selectedDate.year,
@@ -212,15 +278,42 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
             selectedTime.hour,
             selectedTime.minute,
           );
-          if (selectedDateTime.isAfter(now)) {
-            timeSlots.add(selectedTime);
-          } else {
+
+          // Check if time is in the future
+          if (selectedDateTime.isBefore(now)) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Selected time must be in the future')),
             );
+            continue;
           }
+
+          // Check 3-hour gap from previous slot if exists
+          if (lastSelectedTime != null) {
+            final prevTimeInMinutes = lastSelectedTime.hour * 60 + lastSelectedTime.minute;
+            final currentTimeInMinutes = selectedTime.hour * 60 + selectedTime.minute;
+
+            if (currentTimeInMinutes < prevTimeInMinutes + 180) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Time slots must have at least 3 hours gap')),
+              );
+              continue;
+            }
+          }
+
+          // Check if time already exists
+          if (timeSlots.any((slot) =>
+          slot.hour == selectedTime.hour &&
+              slot.minute == selectedTime.minute)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('This time slot is already selected')),
+            );
+            continue;
+          }
+
+          timeSlots.add(selectedTime);
+          lastSelectedTime = selectedTime;
         } else {
-          break; // Stop if user cancels time selection
+          break; // User canceled time selection
         }
       }
 
@@ -232,6 +325,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
     }
   }
 
+
   void _removeSlot(String dateKey) {
     setState(() {
       _onlineTimeSlots.remove(dateKey);
@@ -242,7 +336,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
     final List<TimeOfDay>? updatedSlots = await showDialog(
       context: context,
       builder: (BuildContext context) {
-        final List<TimeOfDay> slots = _onlineTimeSlots[dateKey]!;
+        final List<TimeOfDay> slots = List.from(_onlineTimeSlots[dateKey]!);
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
@@ -250,14 +344,19 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
               content: SingleChildScrollView(
                 child: Column(
                   children: [
-                    ...slots.map((slot) {
+                    ...slots.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final slot = entry.value;
                       return ListTile(
                         title: Text(slot.format(context)),
+                        subtitle: index > 0
+                            ? Text('${_calculateTimeDifference(slots[index-1], slot)} gap from previous')
+                            : null,
                         trailing: IconButton(
                           icon: Icon(Icons.delete),
                           onPressed: () {
                             setState(() {
-                              slots.remove(slot);
+                              slots.removeAt(index);
                             });
                           },
                         ),
@@ -265,29 +364,55 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
                     }).toList(),
                     ElevatedButton(
                       onPressed: () async {
+                        final TimeOfDay? lastTime = slots.isNotEmpty ? slots.last : null;
                         final TimeOfDay? newSlot = await showTimePicker(
                           context: context,
-                          initialTime: TimeOfDay.now(),
+                          initialTime: lastTime ?? TimeOfDay.now(),
                         );
+
                         if (newSlot != null) {
-                          // Ensure the new slot is in the future
+                          // Validate the new slot
                           final now = DateTime.now();
+                          final selectedDate = DateTime.parse(dateKey);
                           final selectedDateTime = DateTime(
-                            DateTime.parse(dateKey).year,
-                            DateTime.parse(dateKey).month,
-                            DateTime.parse(dateKey).day,
+                            selectedDate.year,
+                            selectedDate.month,
+                            selectedDate.day,
                             newSlot.hour,
                             newSlot.minute,
                           );
-                          if (selectedDateTime.isAfter(now)) {
-                            setState(() {
-                              slots.add(newSlot);
-                            });
-                          } else {
+
+                          if (selectedDateTime.isBefore(now)) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Selected time must be in the future')),
                             );
+                            return;
                           }
+
+                          if (lastTime != null) {
+                            final lastTimeInMinutes = lastTime.hour * 60 + lastTime.minute;
+                            final newTimeInMinutes = newSlot.hour * 60 + newSlot.minute;
+
+                            if (newTimeInMinutes < lastTimeInMinutes + 180) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Time slots must have at least 3 hours gap')),
+                              );
+                              return;
+                            }
+                          }
+
+                          if (slots.any((slot) =>
+                          slot.hour == newSlot.hour &&
+                              slot.minute == newSlot.minute)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('This time slot is already selected')),
+                            );
+                            return;
+                          }
+
+                          setState(() {
+                            slots.add(newSlot);
+                          });
                         }
                       },
                       child: Text('Add New Slot'),
@@ -309,10 +434,30 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
       },
     );
 
-    if (updatedSlots != null) {
+    if (updatedSlots != null && updatedSlots.isNotEmpty) {
       setState(() {
         _onlineTimeSlots[dateKey] = updatedSlots;
       });
+    } else if (updatedSlots != null && updatedSlots.isEmpty) {
+      setState(() {
+        _onlineTimeSlots.remove(dateKey);
+      });
+    }
+  }
+
+  String _calculateTimeDifference(TimeOfDay earlier, TimeOfDay later) {
+    final earlierMinutes = earlier.hour * 60 + earlier.minute;
+    final laterMinutes = later.hour * 60 + later.minute;
+    final difference = laterMinutes - earlierMinutes;
+
+    if (difference < 60) {
+      return '$difference minutes';
+    } else {
+      final hours = difference ~/ 60;
+      final minutes = difference % 60;
+      return minutes > 0
+          ? '$hours hours $minutes minutes'
+          : '$hours hours';
     }
   }
 
@@ -362,6 +507,9 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
   }
 
   bool _validateFields() {
+    final provider = context.read<PsychologistProfileProvider>();
+
+    // Check text fields
     if (_nameController.text.isEmpty ||
         _addressController.text.isEmpty ||
         _phoneNumberController.text.isEmpty ||
@@ -374,10 +522,26 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
         _stripeIdController.text.isEmpty ||
         _descriptionController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('All fields are required')),
+        SnackBar(content: Text('All text fields are required')),
       );
       return false;
     }
+
+    // Check images
+    if (provider.profileImageUrl == null || provider.profileImageUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile image is required')),
+      );
+      return false;
+    }
+
+    if (provider.degreeImageUrl == null || provider.degreeImageUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Degree image is required')),
+      );
+      return false;
+    }
+
     return true;
   }
 
@@ -386,6 +550,23 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
     final provider = context.watch<PsychologistProfileProvider>();
     final size = MediaQuery.of(context).size;
     final authProvider = Provider.of<MyAuthProvider.AuthProvider>(context);
+
+    final bool isFormComplete =
+        _nameController.text.isNotEmpty &&
+            _addressController.text.isNotEmpty &&
+            _phoneNumberController.text.isNotEmpty &&
+            _selectedDegrees.isNotEmpty &&
+            _specializationController.text.isNotEmpty &&
+            _experienceController.text.isNotEmpty &&
+            _clinicTimingController.text.isNotEmpty &&
+            _weekDaysController.text.isNotEmpty &&
+            _appointmentFeeController.text.isNotEmpty &&
+            _stripeIdController.text.isNotEmpty &&
+            _descriptionController.text.isNotEmpty &&
+            provider.profileImageUrl != null &&
+            provider.profileImageUrl!.isNotEmpty &&
+            provider.degreeImageUrl != null &&
+            provider.degreeImageUrl!.isNotEmpty;
 
     return Scaffold(
       appBar: PreferredSize(
@@ -483,14 +664,14 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
             SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF006064),
+                backgroundColor: isFormComplete ? Color(0xFF006064) : Colors.grey,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(36),
                 ),
               ),
-              onPressed: () {
+              onPressed: isFormComplete ? () {
                 if (_validateFields()) {
                   provider.updateProfileData(
                     name: _nameController.text,
@@ -510,7 +691,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
                     SnackBar(content: Text('Profile Updated')),
                   );
                 }
-              },
+              } : null,
               child: Text('Save Changes', style: TextStyle(fontSize: 16)),
             ),
           ],

@@ -20,6 +20,7 @@ class PsychologistProfileViewProvider with ChangeNotifier {
   String? _email;
   double? _ratings;
   Map<String, List<TimeOfDay>>? _onlineTimeSlots;
+  bool? _isVerfied;
 
   String? get profileImageUrl => _profileImageUrl;
   String? get degreeImageUrl => _degreeImageUrl;
@@ -37,6 +38,7 @@ class PsychologistProfileViewProvider with ChangeNotifier {
   String? get email => _email;
   double? get ratings => _ratings;
   Map<String, List<TimeOfDay>>? get onlineTimeSlots => _onlineTimeSlots;
+  bool? get isVerfied => _isVerfied;
 
   final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -101,10 +103,14 @@ class PsychologistProfileViewProvider with ChangeNotifier {
         _appointmentFee = data['appointmentFee'] as String?;
         _stripeId = data['stripeId'] as String?;
         _email = data['email'] as String?;
+
+        // Parse online time slots and filter out past dates
         _onlineTimeSlots = data['onlineTimeSlots'] != null
             ? _parseOnlineTimeSlots(data['onlineTimeSlots'])
             : null;
+
         _ratings = double.tryParse(data['ratings']?? "0.0") ?? 0.0;
+        _isVerfied = data['isVerfied'];
 
         notifyListeners();
       }
@@ -112,19 +118,47 @@ class PsychologistProfileViewProvider with ChangeNotifier {
       print("Error fetching profile data: $e");
     }
   }
+  Map<String, List<TimeOfDay>> _parseOnlineTimeSlots(dynamic timeSlotsData) {
+    final Map<String, List<TimeOfDay>> result = {};
+    if (timeSlotsData is! Map) return result;
 
-  Map<String, List<TimeOfDay>> _parseOnlineTimeSlots(dynamic data) {
-    final Map<String, List<TimeOfDay>> slots = {};
-    if (data is Map) {
-      data.forEach((key, value) {
-        if (value is List) {
-          slots[key] = value.map((time) => _parseTime(time)).toList();
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final currentTime = TimeOfDay.fromDateTime(now);
+
+    timeSlotsData.forEach((dateStr, times) {
+      try {
+        final date = DateTime.parse(dateStr);
+
+        // Check if date is today or in the future
+        if (date.isAfter(todayDate.subtract(const Duration(days: 1)))) {
+          if (times is List) {
+            final timeSlots = times.map((timeStr) {
+              final parts = timeStr.toString().split(':');
+              return TimeOfDay(
+                hour: int.parse(parts[0]),
+                minute: int.parse(parts[1]),
+              );
+            }).toList();
+
+            // If it's today, filter out past time slots
+            if (date == todayDate) {
+              result[dateStr] = timeSlots.where((time) {
+                return time.hour > currentTime.hour ||
+                    (time.hour == currentTime.hour && time.minute > currentTime.minute);
+              }).toList();
+            } else {
+              result[dateStr] = timeSlots;
+            }
+          }
         }
-      });
-    }
-    return slots;
-  }
+      } catch (e) {
+        print('Error parsing date $dateStr: $e');
+      }
+    });
 
+    return result..removeWhere((key, value) => value.isEmpty);
+  }
   TimeOfDay _parseTime(String time) {
     final parts = time.split(':');
     return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
