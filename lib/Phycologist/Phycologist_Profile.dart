@@ -30,29 +30,40 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
   Map<String, List<TimeOfDay>> _onlineTimeSlots = {};
 
   @override
+  @override
   void initState() {
     super.initState();
+    final profileProvider = context.read<PsychologistProfileProvider>();
+
+    // Add listener to update local state when provider changes
+    profileProvider.addListener(() {
+      if (mounted) {
+        setState(() {
+          _onlineTimeSlots = profileProvider.onlineTimeSlots ?? {};
+        });
+      }
+    });
+
     Future.delayed(Duration.zero, () {
-      context.read<PsychologistProfileProvider>().fetchProfileData(FirebaseAuth.instance.currentUser!.uid).then((_) {
-        final provider = context.read<PsychologistProfileProvider>();
-        if (provider.clinicTiming != null) {
-          _clinicTimingController.text = provider.clinicTiming!;
-          final times = provider.clinicTiming!.split(' - ');
+      profileProvider.fetchProfileData(FirebaseAuth.instance.currentUser!.uid).then((_) {
+        if (profileProvider.clinicTiming != null) {
+          _clinicTimingController.text = profileProvider.clinicTiming!;
+          final times = profileProvider.clinicTiming!.split(' - ');
           if (times.length == 2) {
             _startTime = _parseTime(times[0]);
             _endTime = _parseTime(times[1]);
           }
         }
-        if (provider.weekDays != null) {
-          _weekDaysController.text = provider.weekDays!;
-          _selectedDays = provider.weekDays!.split(', ');
+        if (profileProvider.weekDays != null) {
+          _weekDaysController.text = profileProvider.weekDays!;
+          _selectedDays = profileProvider.weekDays!.split(', ');
         }
-        if (provider.degrees != null) {
-          _selectedDegrees = provider.degrees!;
+        if (profileProvider.degrees != null) {
+          _selectedDegrees = profileProvider.degrees!;
         }
-        if (provider.onlineTimeSlots != null) {
+        if (profileProvider.onlineTimeSlots != null) {
           setState(() {
-            _onlineTimeSlots = provider.onlineTimeSlots!;
+            _onlineTimeSlots = profileProvider.onlineTimeSlots!;
           });
         }
       });
@@ -189,7 +200,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
       context: context,
       initialDate: DateTime.now().add(Duration(days: 1)),
       firstDate: DateTime.now().add(Duration(days: 1)),
-      lastDate: DateTime.now().add(Duration(days: 35)),
+      lastDate: DateTime.now().add(Duration(days: 2)),
     );
 
     if (selectedDate != null) {
@@ -462,30 +473,72 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
   }
 
   Widget _buildOnlineTimeSlotsField() {
+    final provider = context.watch<PsychologistProfileProvider>();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Use provider's onlineTimeSlots instead of local _onlineTimeSlots
+    final onlineSlots = provider.onlineTimeSlots ?? {};
+
+    // Filter out past dates and past times for today
+    final validSlots = onlineSlots.entries.where((entry) {
+      final date = DateTime.parse(entry.key);
+      final isToday = date.year == today.year &&
+          date.month == today.month &&
+          date.day == today.day;
+
+      if (date.isAfter(today)) {
+        return true; // Future dates are always valid
+      } else if (isToday) {
+        // For today, filter out past time slots
+        final currentTime = TimeOfDay.fromDateTime(now);
+        return entry.value.any((slot) =>
+        slot.hour > currentTime.hour ||
+            (slot.hour == currentTime.hour && slot.minute > currentTime.minute));
+      }
+      return false; // Past dates
+    }).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ElevatedButton(
           style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF006064),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(36),
-              ),
+            backgroundColor: Color(0xFF006064),
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(36),
+            ),
           ),
           onPressed: _selectDayAndTimeSlots,
-          child: Text('Add Online Time Slots',style: TextStyle(fontSize: 16),),
+          child: Text('Add Online Time Slots', style: TextStyle(fontSize: 16)),
         ),
         SizedBox(height: 10),
-        ..._onlineTimeSlots.entries.map((entry) {
+        if (validSlots.isEmpty)
+          Text('No upcoming time slots available', style: TextStyle(color: Colors.grey)),
+        ...validSlots.map((entry) {
           final dateKey = entry.key;
           final timeSlots = entry.value;
+          final date = DateTime.parse(dateKey);
+          final isToday = date.year == today.year &&
+              date.month == today.month &&
+              date.day == today.day;
+
+          // Filter out past times for today
+          final validTimes = isToday
+              ? timeSlots.where((slot) {
+            final currentTime = TimeOfDay.fromDateTime(now);
+            return slot.hour > currentTime.hour ||
+                (slot.hour == currentTime.hour && slot.minute > currentTime.minute);
+          }).toList()
+              : timeSlots;
+
           return Card(
             margin: EdgeInsets.symmetric(vertical: 5),
             child: ListTile(
-              title: Text('Date: $dateKey'),
-              subtitle: Text('Time Slots: ${timeSlots.map((time) => time.format(context)).join(', ')}'),
+              title: Text('Date: ${_formatDate(date)}'),
+              subtitle: Text('Time Slots: ${validTimes.map((time) => time.format(context)).join(', ')}'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -504,6 +557,10 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
         }).toList(),
       ],
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}-${date.month}-${date.year}';
   }
 
   bool _validateFields() {
@@ -567,6 +624,7 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
             provider.profileImageUrl!.isNotEmpty &&
             provider.degreeImageUrl != null &&
             provider.degreeImageUrl!.isNotEmpty;
+
 
     return Scaffold(
       appBar: PreferredSize(
@@ -686,10 +744,9 @@ class _PsychologistProfileScreenState extends State<PsychologistProfileScreen> {
                     stripeId: _stripeIdController.text,
                     description: _descriptionController.text,
                     onlineTimeSlots: _onlineTimeSlots,
+                    context: context
                   );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Profile Updated')),
-                  );
+
                 }
               } : null,
               child: Text('Save Changes', style: TextStyle(fontSize: 16)),

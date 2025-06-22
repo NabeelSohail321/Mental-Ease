@@ -2,9 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
 import 'Doctors_Listing.dart';
-import 'Model_Provider.dart';
+import 'Providers/Model_Provider.dart';
 import 'UserDashboard.dart';
 
 class Questions extends StatefulWidget {
@@ -18,6 +17,7 @@ class QuestionsState extends State<Questions> {
   String? lastInputValue;
   int? lastQuestionIndex;
   String? errorMessage;
+  bool _isSubmitting = false;
 
   List<Map<String,dynamic>> questionsList = [
     {
@@ -591,189 +591,6 @@ class QuestionsState extends State<Questions> {
     }
   }
 
-  void _showPredictionResult(BuildContext context) async {
-    final modelProvider = Provider.of<ModelProvider>(context, listen: false);
-
-    // Show loading indicator with StatefulBuilder
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Center(child: CircularProgressIndicator()),
-      ),
-    );
-
-    try {
-      // Wait for prediction to complete
-      while (modelProvider.isLoading) {
-        await Future.delayed(Duration(milliseconds: 100));
-      }
-
-      // Close loading dialog
-      Navigator.of(context).pop();
-
-      // Verify we have a valid prediction result
-      if (modelProvider.predictionResult == null) {
-        throw Exception('No prediction data received');
-      }
-
-      // Show result dialog with StatefulBuilder
-      showDialog(
-        context: context,
-        builder: (context) => StatefulBuilder(
-          builder: (context, setState) {
-            final prediction = modelProvider.predictionResult;
-            final String category;
-            final Color color;
-
-            // Determine category from API response
-            if (prediction['prediction'] == 'Normal') {
-              category = 'Normal';
-              color = Colors.green;
-            } else if (prediction['prediction'] == 'Moderate') {
-              category = 'Moderate';
-              color = Colors.orange;
-            } else if (prediction['prediction'] == 'Severe') {
-              category = 'Severe';
-              color = Colors.red;
-            } else {
-              category = 'Unknown result';
-              color = Colors.grey;
-            }
-
-            return AlertDialog(
-              title: Text('Assessment Result'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _getCategoryIcon(prediction['prediction']),
-                      size: 48,
-                      color: color,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Your result:',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      category,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    if (prediction['prediction'] == 'Moderate' ||
-                        prediction['prediction'] == 'Severe')
-                      Text(
-                        'Consider consulting a healthcare professional',
-                        style: TextStyle(
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey[600],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    SizedBox(height: 8),
-                    // Debug view - show full API response
-                    // if (kDebugMode)
-                    //   Text(
-                    //     'API Response: ${prediction.toString()}',
-                    //     style: TextStyle(fontSize: 10, color: Colors.grey),
-                    //   ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: (){
-                    Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => Userdashboard()),
-                          (Route<dynamic> route) => false,);
-                  },
-                  child: Text('OK'),
-                ),
-                if (prediction['prediction'] == 'Severe'||prediction['prediction'] == 'Moderate')
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => DoctorsListing()),
-                            (Route<dynamic> route) => false,);
-                    },
-                    child: Text('Consult a doctor', style: TextStyle(color: Colors.green)),
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-    } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
-      showDialog(
-        context: context,
-        builder: (context) => StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: Text('Error'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Failed to get results: ${e.toString()}'),
-                SizedBox(height: 16),
-                if (modelProvider.predictionResult != null)
-                  Text(
-                    'Raw API response: ${modelProvider.predictionResult}',
-                    style: TextStyle(fontSize: 10),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('OK'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-
-  IconData _getCategoryIcon(String? category) {
-    switch (category) {
-      case 'Normal':
-        return Icons.check_circle;
-      case 'Moderate':
-        return Icons.warning;
-      case 'Severe':
-        return Icons.error;
-      default:
-        return Icons.help_outline;
-    }
-  }
-
-  void _showEmergencyContacts(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Emergency Contacts'),
-        content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-        ListTile(
-        leading: Icon(Icons.phone),
-        title: Text('National Suicide Prevention Lifeline'),
-        subtitle: Text('1-800-273-8255'),
-
-
-      ),
-      ]
-    )
-    ));
-  }
-
-// Modified _handleSubmit to use this dialog
   Future<void> _handleSubmit() async {
     if (selectedOptions[currentQuestionIndex] == null &&
         questionsList[currentQuestionIndex]['isTextInput'] != true) {
@@ -781,20 +598,23 @@ class QuestionsState extends State<Questions> {
       return;
     }
 
+    setState(() {
+      _isSubmitting = true;
+    });
+
     try {
       // Process answers (convert from 0-3 to 1-4 for first 10 questions)
       List<dynamic> processedAnswers = selectedOptions.asMap().entries.map((entry) {
         final index = entry.key;
         final answer = entry.value;
 
-        if (answer is int && answer < 11) { // First 10 questions use 0-3 scale
+        if (answer is int && index < 11) { // First 10 questions use 0-3 scale
           return answer + 1; // Convert to 1-4
         }
         return answer;
       }).toList();
 
       final modelProvider = Provider.of<ModelProvider>(context, listen: false);
-
 
       // Ensure we await the prediction call
       await modelProvider.modelPrediction(processedAnswers);
@@ -811,10 +631,189 @@ class QuestionsState extends State<Questions> {
       _showError('Submission failed: ${e.toString()}');
       debugPrint('Submission error: $e');
       debugPrint('Selected answers: $selectedOptions');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
+  void _showPredictionResult(BuildContext context) async {
+    final modelProvider = Provider.of<ModelProvider>(context, listen: false);
 
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Wait for prediction to complete if it's still processing
+      while (modelProvider.isLoading) {
+        await Future.delayed(Duration(milliseconds: 100));
+      }
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Verify we have a valid prediction result
+      if (modelProvider.predictionResult == null) {
+        throw Exception('No prediction data received');
+      }
+
+      // Show result dialog
+      showDialog(
+        context: context,
+        builder: (context) {
+          final prediction = modelProvider.predictionResult;
+          final String category;
+          final Color color;
+
+          // Determine category from API response
+          if (prediction['prediction'] == 'Normal') {
+            category = 'Normal';
+            color = Colors.green;
+          } else if (prediction['prediction'] == 'Moderate') {
+            category = 'Moderate';
+            color = Colors.orange;
+          } else if (prediction['prediction'] == 'Severe') {
+            category = 'Severe';
+            color = Colors.red;
+          } else {
+            category = 'Unknown result';
+            color = Colors.grey;
+          }
+
+          return AlertDialog(
+            title: Text('Assessment Result'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _getCategoryIcon(prediction['prediction']),
+                    size: 48,
+                    color: color,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Your result:',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    category,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  if (prediction['prediction'] == 'Moderate' ||
+                      prediction['prediction'] == 'Severe')
+                    Text(
+                      'Consider consulting a healthcare professional',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: (){
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomeScreen()),
+                        (Route<dynamic> route) => false,
+                  );
+                },
+                child: Text('OK'),
+              ),
+              if (prediction['prediction'] == 'Severe'||prediction['prediction'] == 'Moderate')
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => DoctorsListing()),
+                          (Route<dynamic> route) => false,
+                    );
+                  },
+                  child: Text('Consult a doctor', style: TextStyle(color: Colors.green)),
+                ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Failed to get results: ${e.toString()}'),
+              SizedBox(height: 16),
+              if (modelProvider.predictionResult != null)
+                Text(
+                  'Raw API response: ${modelProvider.predictionResult}',
+                  style: TextStyle(fontSize: 10),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  IconData _getCategoryIcon(String? category) {
+    switch (category) {
+      case 'Normal':
+        return Icons.check_circle;
+      case 'Moderate':
+        return Icons.warning;
+      case 'Severe':
+        return Icons.error;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  void _showEmergencyContacts(BuildContext context) {
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+            title: Text('Emergency Contacts'),
+            content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.phone),
+                    title: Text('National Suicide Prevention Lifeline'),
+                    subtitle: Text('1-800-273-8255'),
+                  ),
+                ]
+            )
+        )
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -996,8 +995,17 @@ class QuestionsState extends State<Questions> {
                   width: buttonWidth,
                   child: isLastQuestion
                       ? ElevatedButton(
-                    onPressed: _handleSubmit,
-                    child: Text('Submit'),
+                    onPressed: _isSubmitting ? null : _handleSubmit,
+                    child: _isSubmitting
+                        ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : Text('Submit'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueGrey,
                       foregroundColor: Colors.white,

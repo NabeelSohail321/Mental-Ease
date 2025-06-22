@@ -49,7 +49,8 @@ class ModelProvider with ChangeNotifier {
         print(_predictionResult);
         dref.push().set({
           "status": _predictionResult['prediction'],
-          "Uid": uid
+          "Uid": uid,
+          "date": DateTime.now().toIso8601String()
         });
       } else {
         // Handle server errors

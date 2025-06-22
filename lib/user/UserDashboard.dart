@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../Auth_Provider/login_Provider.dart';
 import '../Login.dart';
+import 'Appointment_History.dart';
 import 'Assesment_Options.dart';
 import 'Doctors_Listing.dart';
 import 'Inbox.dart';
@@ -30,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     Userdashboard(),
     InboxScreen(firebase_auth.FirebaseAuth.instance.currentUser!.uid), // Replace with your Messages screen
-    Userdashboard(), // Replace with your Doctors screen
+    AppointmentHistory_Options(), // Replace with your Doctors screen
     UserProfile(),
   ];
 
@@ -67,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   GButton(
                     icon: Icons.medical_services,
-                    text: 'Doctors',
+                    text: 'Appointments',
                   ),
                   GButton(
                     icon: Icons.person,

@@ -48,8 +48,81 @@ class _InboxScreenState extends State<InboxScreen> {
     final chatProvider = Provider.of<ChatProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Inbox'),
+      appBar:PreferredSize(
+        preferredSize: Size.fromHeight(screenHeight * 0.2),
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(screenHeight * 0.03),
+          ),
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFE0F7FA), Color(0xFF80DEEA)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.05,
+                    vertical: screenHeight * 0.02,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'Welcome to ',
+                                    style: TextStyle(
+                                      fontFamily: "CustomFont",
+                                      color: Color(0xFF006064),
+                                      fontSize: screenHeight * 0.035,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: "Inbox",
+                                    style: TextStyle(
+                                      fontFamily: "CustomFont",
+                                      color: Colors.black,
+                                      fontSize: screenHeight * 0.035,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Center(
+                        child: Container(
+                          width: screenWidth * 0.7,
+                          child: Divider(
+                            thickness: 2,
+                            height: screenWidth * 0.035,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: chatProvider.isLoading
           ? Center(
@@ -73,47 +146,50 @@ class _InboxScreenState extends State<InboxScreen> {
           final timestamp = chat?['timestamp'] ?? DateTime.now().millisecondsSinceEpoch;
           final unreadCount = chat?['unreadCount'] ?? 0;
 
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundImage: otherUserImage != null && otherUserImage.isNotEmpty
-                  ? NetworkImage(otherUserImage)
-                  : null,
-              child: otherUserImage == null || otherUserImage.isEmpty
-                  ? Text(otherUserName.isNotEmpty ? otherUserName[0] : '?')
-                  : null,
+          return Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundImage: otherUserImage != null && otherUserImage.isNotEmpty
+                    ? NetworkImage(otherUserImage)
+                    : null,
+                child: otherUserImage == null || otherUserImage.isEmpty
+                    ? Text(otherUserName.isNotEmpty ? otherUserName[0] : '?')
+                    : null,
+              ),
+              title: Text(otherUserName),
+              subtitle: Text(lastMessage),
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _formatTimestamp(timestamp),
+                    style: TextStyle(
+                      fontSize: screenHeight * 0.015,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  if (unreadCount > 0)
+                    CircleAvatar(
+                      radius: 12,
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      child: Text(unreadCount.toString()),
+                    ),
+
+                ],
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(
+                      widget.currentUserId,
+                      otherUserId,
+                    ),
+                  ),
+                );
+              },
             ),
-            title: Text(otherUserName),
-            subtitle: Text(lastMessage),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _formatTimestamp(timestamp),
-                  style: TextStyle(
-                    fontSize: screenHeight * 0.015,
-                    color: Colors.grey,
-                  ),
-                ),
-                if (unreadCount > 0)
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    child: Text(unreadCount.toString()),
-                  ),
-              ],
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatScreen(
-                    widget.currentUserId,
-                    otherUserId,
-                  ),
-                ),
-              );
-            },
           );
         },
       ),

@@ -57,8 +57,10 @@ class PsychologistProfileProvider with ChangeNotifier {
   Map<String, List<TimeOfDay>>? _onlineTimeSlots;
   double? _ratings;
   bool? _isVerified;
+  bool _isLoading = true;
 
   // Getters
+  bool get isLoading => _isLoading;
   String? get profileImageUrl => _profileImageUrl;
   String? get degreeImageUrl => _degreeImageUrl;
   String? get description => _description;
@@ -82,6 +84,8 @@ class PsychologistProfileProvider with ChangeNotifier {
 
   Future<void> fetchProfileData(String psychologistId) async {
     try {
+      _isLoading = true;
+      notifyListeners();
       final snapshot = await _databaseRef.child("users").child(psychologistId).get();
       if (snapshot.exists && snapshot.value is Map) {
         final data = Map<String, dynamic>.from(snapshot.value as Map);
@@ -108,10 +112,13 @@ class PsychologistProfileProvider with ChangeNotifier {
             : null;
         _ratings = double.tryParse(data['ratings']?.toString() ?? "0.0") ?? 0.0;
 
+        _isLoading = false;
         notifyListeners();
       }
     } catch (e) {
-      print("Error fetching profile data: $e");
+      _isLoading = false;
+      notifyListeners();
+      throw e;
     }
   }
 
@@ -170,11 +177,97 @@ class PsychologistProfileProvider with ChangeNotifier {
     String? appointmentFee,
     String? stripeId,
     Map<String, List<TimeOfDay>>? onlineTimeSlots,
+    required BuildContext context
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
+      // Check for existing appointments if onlineTimeSlots are being updated
+      if (onlineTimeSlots != null) {
+        // Get all existing appointments for this doctor
+        final appointmentsSnapshot = await _databaseRef
+            .child("online_Appointments")
+            .orderByChild("doctorId")
+            .equalTo(user.uid)
+            .get();
+
+        if (appointmentsSnapshot.exists) {
+          final now = DateTime.now();
+          final appointments = appointmentsSnapshot.value as Map<dynamic, dynamic>;
+          final Map<String, List<TimeOfDay>> filteredSlots = {};
+
+          // Check each proposed time slot against existing appointments
+          for (final entry in onlineTimeSlots.entries) {
+            try {
+              final date = DateTime.parse(entry.key);
+              final List<TimeOfDay> validTimes = [];
+
+              for (final time in entry.value) {
+                bool isConflict = false;
+                final slotDateTime = DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                  time.hour,
+                  time.minute,
+                );
+
+                // Check each existing appointment
+                for (final appointmentEntry in appointments.entries) {
+                  final appointment = appointmentEntry.value as Map<dynamic, dynamic>;
+
+                  // Get appointment date and time
+                  final apptDateStr = appointment['date'] as String? ?? entry.key;
+                  final apptTimeStr = appointment['time'] as String? ?? '00:00';
+
+                  try {
+                    final apptDate = DateTime.parse(apptDateStr);
+                    final timeParts = apptTimeStr.split(':');
+                    final apptTime = TimeOfDay(
+                      hour: int.parse(timeParts[0]),
+                      minute: int.parse(timeParts[1]),
+                    );
+
+                    final apptDateTime = DateTime(
+                      apptDate.year,
+                      apptDate.month,
+                      apptDate.day,
+                      apptTime.hour,
+                      apptTime.minute,
+                    );
+
+                    // Calculate time difference in minutes
+                    final difference = slotDateTime.difference(apptDateTime).inMinutes.abs();
+
+                    if (difference < 180) { // 3 hours = 180 minutes
+                      isConflict = true;
+                      break;
+                    }
+                  } catch (e) {
+                    print('Error parsing appointment date/time: $e');
+                  }
+                }
+
+                if (!isConflict) {
+                  validTimes.add(time);
+                }
+              }
+
+              if (validTimes.isNotEmpty) {
+                filteredSlots[entry.key] = validTimes;
+              }
+            } catch (e) {
+              print('Error processing date ${entry.key}: $e');
+            }
+          }
+
+          // Replace the original slots with filtered ones
+          onlineTimeSlots = filteredSlots;
+        }
+      }
+
+      // Rest of your update logic remains the same...
       final updatedData = {
         'username': name ?? _name,
         'description': description ?? _description,
@@ -213,10 +306,16 @@ class PsychologistProfileProvider with ChangeNotifier {
       if (_areAllFieldsFilled()) {
         await _databaseRef.child("users").child(user.uid).update({'isListed': true});
       }
-
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile Updated (if conflicting time slots available in pending appointments that were removed from online time slots)')),
+      );
       notifyListeners();
     } catch (e) {
       print("Error updating profile data: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating profile: $e')),
+      );
+      rethrow;
     }
   }
 

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../Phycologist/Phycologist_dashboard.dart';
 import '../../../Login.dart';
+import '../Admin/AdminDashboard.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -39,6 +40,11 @@ class AuthProvider with ChangeNotifier {
       _isLoggedIn = true; // Update state
       notifyListeners();
       String uid = userCredential.user!.uid;
+      if(!userCredential.user!.emailVerified){
+       await userCredential.user!.sendEmailVerification();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("You are not verified a verification link is send to your email verify and try again")));
+        return;
+      }
 
       // Fetch role from Realtime Database
       _dbRef.child(uid).child("role").once().then((DatabaseEvent event) {
@@ -65,6 +71,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+
+  Future<void> forgetPassword (String email, BuildContext context)async {
+    await _auth.sendPasswordResetEmail(email: email);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Password reset link has been send to your email address")));
+
+  }
+
   void _navigateToRolePage(BuildContext context, String role) {
     if (role == "user") {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
@@ -74,9 +87,9 @@ class AuthProvider with ChangeNotifier {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
         return PsychologistHomeScreen();
       },),  (Route<dynamic> route) => false,);
-    } else if (role == "Admin") {
+    } else if (role == "Admin" || role == "SuperAdmin") {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) {
-        return Userdashboard();
+        return AdminHomeScreen(role);
       },),  (Route<dynamic> route) => false,);
     } else {
       _showError(context, "Invalid role detected.");

@@ -3,7 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:mental_ease/user/Model_Provider.dart';
+import 'package:mental_ease/user/Providers/Model_Provider.dart';
 import 'package:mental_ease/user/Providers/Appointment_provider/Physical_Appointment_Provider.dart';
 import 'package:mental_ease/user/Providers/Chat_Providers/Chat_Provider.dart';
 import 'package:mental_ease/user/Providers/Dashboard_Provider/Dashboard_Provider.dart';
@@ -11,10 +11,21 @@ import 'package:mental_ease/user/Providers/Doctors_Provider/DoctorProfileProvide
 import 'package:mental_ease/user/Providers/Profile_Provider/Profile_Provider.dart';
 import 'package:provider/provider.dart';
 
+import 'Admin/providers/Admin_App_revenue_Provider.dart';
+import 'Admin/providers/UserManagementProvider.dart';
+import 'Admin/providers/phycologistVerificationProvider.dart';
+import 'Admin/providers/phycologist_report_provider.dart';
+import 'Admin/providers/phycologist_revenue_provider.dart';
 import 'Auth_Provider/SignUp_Provider.dart';
 import 'Auth_Provider/login_Provider.dart';
 import 'Notification_Services.dart';
+import 'Phycologist/Providers/App_Fee_Provider.dart';
+import 'Phycologist/Providers/Phycologist_Physical_Appointment_Provider.dart';
+import 'Phycologist/Providers/PhycologistChatProvider.dart';
 import 'Phycologist/Providers/Phycologist_Profile_Provider/Phycologist_Profile_Provider.dart';
+import 'Phycologist/Providers/phycologist_online_appointment_provider.dart';
+import 'Phycologist/Providers/resechdule_provider.dart';
+import 'Phycologist/Providers/revenue_provider.dart';
 import 'SplashScreen.dart';
 import 'firebase_options.dart';
 
@@ -43,7 +54,17 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ModelProvider()),
         ChangeNotifierProvider(create: (_) => AppointmentProvider()),
-
+        ChangeNotifierProvider(create: (_) => Phycologistchatprovider()),
+        ChangeNotifierProvider(create: (_) => AppointmentProvider12()),
+        ChangeNotifierProvider(create: (_) => phycologistOnlineAppointmentProvider()),
+        ChangeNotifierProvider(create: (_) => RevenueProvider()),
+        ChangeNotifierProvider(create: (_) => AppFeeProvider()),
+        ChangeNotifierProvider(create: (_) => AdminAppFeeProvider()),
+        ChangeNotifierProvider(create: (_) => AdminPsychologistRevenueProvider()),
+        ChangeNotifierProvider(create: (_) => PsychologistReportsProvider()),
+        ChangeNotifierProvider(create: (_) => PsychologistVerificationProvider()),
+        ChangeNotifierProvider(create: (_) => UserManagementProvider()),
+        ChangeNotifierProvider(create: (_) => RescheduleProvider())
 
       ],
       child: const MyApp(),

@@ -441,7 +441,7 @@ class _OnlineAppointmentScreenState extends State<OnlineAppointmentScreen> {
           context: context
       );
 
-      Navigator.push(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => AppointmentConfirmationScreen(
@@ -452,6 +452,7 @@ class _OnlineAppointmentScreenState extends State<OnlineAppointmentScreen> {
             isPhysical: false,
           ),
         ),
+            (Route<dynamic> route) => false,
       );
     } catch (e) {
       print('Appointment booking error: $e');

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'Auth_Provider/login_Provider.dart';
 import 'Notification_Services.dart';
+import 'forgetPassword.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -198,6 +199,11 @@ class LoginPageState extends State<LoginPage> {
                       return null;
                     },
                   ),
+                  TextButton(onPressed: (){
+                    Navigator.push(context, MaterialPageRoute(builder: (context) {
+                      return ForgetPassword();
+                    },));
+                  }, child: Text('Forget Password?')),
                   SizedBox(height: 20),
                   SizedBox(
                     width: 370,

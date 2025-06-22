@@ -1,18 +1,17 @@
 import 'dart:convert';
-
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 import '../Video_Call_Service.dart';
 import '../serverkey.dart';
 import '../videoCall.dart';
 import 'Providers/Chat_Providers/Chat_Provider.dart';
 import 'Providers/Doctors_Provider/DoctorProfileProvider.dart';
-import 'package:http/http.dart' as http;
-
 
 class ChatScreen extends StatefulWidget {
   final String senderId;
@@ -28,39 +27,30 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late String _chatId;
-  bool _isLoading = true; // Track loading state
-
+  bool _isLoading = true;
+  bool _isVideoCallEnabled = false;
   final channelController = 'Mental Ease';
   bool _validateError = false;
   ClientRoleType? _role = ClientRoleType.clientRoleBroadcaster;
 
-
-  @override
-  void dispose() {
-
-    // TODO: implement dispose
-    super.dispose();
-  }
-
   @override
   void initState() {
-    print(_role);
     super.initState();
     final provider = Provider.of<PsychologistProfileViewProvider>(context, listen: false);
     provider.fetchProfileData(widget.receiverId);
     _initializeChat();
+    _checkVideoCallAvailability();
   }
 
   Future<void> _initializeChat() async {
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    chatProvider.setCurrentUserId(widget.receiverId); // Set the current user ID (receiver)
+    chatProvider.setCurrentUserId(widget.receiverId);
     _chatId = await chatProvider.getOrCreateChatId(widget.senderId, widget.receiverId);
-    await chatProvider.fetchMessages(_chatId); // Fetch messages and mark them as read
+    await chatProvider.fetchMessages(_chatId);
     setState(() {
-      _isLoading = false; // Mark loading as complete
+      _isLoading = false;
     });
 
-    // Scroll to the bottom after messages are loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -68,6 +58,59 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  Future<void> _checkVideoCallAvailability() async {
+    final now = DateTime.now();
+    final today = DateFormat('yyyy-MM-dd').format(now);
+
+    final dbRef = FirebaseDatabase.instance.ref('online_Appointments');
+    final snapshot = await dbRef
+        .orderByChild('userId')
+        .equalTo(widget.senderId)
+        .once();
+
+    if (snapshot.snapshot.value != null) {
+      final appointments = Map<String, dynamic>.from(snapshot.snapshot.value as Map);
+
+      for (var entry in appointments.entries) {
+        final appointment = Map<String, dynamic>.from(entry.value as Map);
+        if (appointment['doctorId'] == widget.receiverId &&
+            appointment['date'] == today &&
+            appointment['status'] == 'pending') {
+
+          final appointmentTime = appointment['time'] as String;
+          final timeParts = appointmentTime.split(':');
+          if (timeParts.length == 2) {
+            final appointmentHour = int.tryParse(timeParts[0]) ?? 0;
+            final appointmentMinute = int.tryParse(timeParts[1]) ?? 0;
+
+            // Create DateTime object for the appointment
+            final appointmentDateTime = DateTime(
+                now.year, now.month, now.day,
+                appointmentHour, appointmentMinute
+            );
+
+            // Calculate time difference
+            final difference = appointmentDateTime.difference(now);
+
+            // Enable video call if:
+            // 1. Current time is after or equal to appointment time
+            // AND
+            // 2. Current time is within 3 hours after appointment time
+            if (difference.inMinutes <= 0 && difference.inHours >= -3) {
+              setState(() {
+                _isVideoCallEnabled = true;
+              });
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    setState(() {
+      _isVideoCallEnabled = false;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -105,7 +148,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align items to the sides
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Flexible(
                             child: RichText(
@@ -125,11 +168,15 @@ class _ChatScreenState extends State<ChatScreen> {
                             ),
                           ),
                           IconButton(
-                            icon: Icon(Icons.video_call, size: screenHeight * 0.04), // Video call icon
-                            onPressed: () {
+                            icon: Icon(
+                              Icons.video_call,
+                              size: screenHeight * 0.04,
+                              color: _isVideoCallEnabled ? Colors.blue : Colors.grey,
+                            ),
+                            onPressed: _isVideoCallEnabled ? () {
                               onJoin();
-                              // Add video call functionality here
-                              print('Video call button pressed');
+                            } : (){
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("You don't have booked Appointment with Dr: ${provider.name} on this Time check back later after booking Online Appointment")));
                             },
                           ),
                         ],
@@ -152,9 +199,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
       body: _isLoading
-          ? Center(
-        child: CircularProgressIndicator(), // Show loading indicator
-      )
+          ? Center(child: CircularProgressIndicator())
           : Column(
         children: [
           Expanded(
@@ -167,7 +212,6 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             )
                 : ListView.builder(
-               // Display messages from bottom to top
               controller: _scrollController,
               padding: EdgeInsets.all(screenWidth * 0.03),
               itemCount: chatProvider.messages.length,
@@ -231,11 +275,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         widget.receiverId,
                         _messageController.text,
                       );
-
-
                       _messageController.clear();
-
-                      // Scroll to the bottom after sending a message
                       if (_scrollController.hasClients) {
                         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
                       }
@@ -250,37 +290,31 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> onJoin() async{
-
-
+  Future<void> onJoin() async {
     setState(() {
-      channelController.isEmpty? _validateError = true: _validateError =false;
+      channelController.isEmpty ? _validateError = true : _validateError = false;
     });
-    if(channelController.isNotEmpty){
+    if (channelController.isNotEmpty) {
       await _handleCameraAndMic(Permission.camera);
       await _handleCameraAndMic(Permission.microphone);
 
+      final channelId = await generateChannelId(widget.senderId, widget.receiverId);
+      _sendCallNotification(widget.senderId, widget.receiverId, channelId);
 
-      final channelId = await generateChannelId(widget.senderId,widget.receiverId);
-
-      _sendCallNotification(widget.senderId,widget.receiverId,channelId);
-      await Navigator.push(context, MaterialPageRoute(builder: (context) {
-        return callPage(channelController,"broadcaster", widget.receiverId);
-      },));
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => callPage(channelController, "broadcaster", widget.receiverId),
+        ),
+      );
     }
-
-
   }
 
-
+  Future<void> _handleCameraAndMic(Permission permission) async {
+    final status = await permission.request();
+    print(status.toString());
+  }
 }
-
-  Future<void> _handleCameraAndMic(Permission permission) async{
-  final status = await permission.request();
-  print(status.toString());
-
-
-  }
 
 Future<void> _sendCallNotification(String senderId, String receiverId, String channelId) async {
   final _usersRef = FirebaseDatabase.instance.ref('users');
@@ -288,15 +322,13 @@ Future<void> _sendCallNotification(String senderId, String receiverId, String ch
 
   if (senderSnapshot.exists) {
     final senderData = senderSnapshot.value as Map<dynamic, dynamic>;
-    final senderName = senderData['username']; // Current user's name (sender)
+    final senderName = senderData['username'];
 
-    // Fetch receiver's details (device token)
     final receiverSnapshot = await _usersRef.child(receiverId).get();
     if (receiverSnapshot.exists) {
       final receiverData = receiverSnapshot.value as Map<dynamic, dynamic>;
       final receiverToken = receiverData['deviceToken'];
 
-      // Send notification to the receiver
       final get = get_server_key();
       String token = await get.server_token();
 

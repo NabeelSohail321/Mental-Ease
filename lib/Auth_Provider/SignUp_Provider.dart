@@ -29,6 +29,8 @@ class SignupProvider with ChangeNotifier {
 
       String uid = userCredential.user!.uid;
 
+       await userCredential.user!.sendEmailVerification();
+
       // Save user data to Firebase Realtime Database
       if(role == 'user'){
         await _database.child(uid).set({
@@ -50,7 +52,7 @@ class SignupProvider with ChangeNotifier {
 
       // Show success message and navigate
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Successfully Signed Up')),
+        SnackBar(content: Text('Verification Link is send to your email verify and Login')),
       );
 
       Navigator.pushAndRemoveUntil(

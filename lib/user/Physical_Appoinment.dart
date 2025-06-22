@@ -37,6 +37,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
   String? doctorSpecialization;
   bool isLoading = true;
   String? ratings;
+  String? Address;
 
   @override
   void initState() {
@@ -67,6 +68,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
           doctorSpecialization = data['specialization'] ?? 'General Practitioner';
           isLoading = false;
           ratings = data['ratings'] ?? '0.0';
+          Address=data['address'];
         });
       } else {
         setState(() => isLoading = false);
@@ -139,7 +141,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
 
         Navigator.pop(context); // Dismiss loading dialog before navigation
 
-        Navigator.push(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (context) => AppointmentConfirmationScreen(
@@ -149,6 +151,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
               isPhysical: true,
             ),
           ),
+              (Route<dynamic> route) => false,
         );
       } else {
         Navigator.pop(context); // Dismiss loading dialog
@@ -274,7 +277,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
                 SizedBox(height: 12),
                 _buildInfoRow(Icons.attach_money, 'Fee', appointmentFee ?? 'Not specified'),
                 SizedBox(height: 12),
-                _buildInfoRow(Icons.location_on, 'Address', '123 Health St, Medical City'),
+                _buildInfoRow(Icons.location_on, 'Address', Address ?? "Not specified"),
               ],
             ),
           ),
@@ -349,41 +352,41 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
             ),
           ),
           SizedBox(height: screenHeight * 0.02),
-          SizedBox(
-            width: double.infinity,
-            height: screenHeight * 0.06,
-            child: OutlinedButton(
-              onPressed: () {
-                if (selectedDay != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PhysicalappointmentDetails(
-                        doctorName: doctorName ?? 'Unknown Doctor',
-                        selectedDay: selectedDay!,
-                        appointmentToken: Provider.of<AppointmentProvider>(context, listen: false).generateToken(),
-                        isPhysical: true,
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please select a day first')),
-                  );
-                }
-              },
-              style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                side: BorderSide(color: Colors.blue),
-              ),
-              child: const Text(
-                'View Appointment Details',
-                style: TextStyle(fontSize: 16, color: Colors.blue),
-              ),
-            ),
-          ),
+          // SizedBox(
+          //   width: double.infinity,
+          //   height: screenHeight * 0.06,
+          //   child: OutlinedButton(
+          //     onPressed: () {
+          //       if (selectedDay != null) {
+          //         Navigator.push(
+          //           context,
+          //           MaterialPageRoute(
+          //             builder: (context) => PhysicalappointmentDetails(
+          //               doctorName: doctorName ?? 'Unknown Doctor',
+          //               selectedDay: selectedDay!,
+          //               appointmentToken: Provider.of<AppointmentProvider>(context, listen: false).generateToken(),
+          //               isPhysical: true,
+          //             ),
+          //           ),
+          //         );
+          //       } else {
+          //         ScaffoldMessenger.of(context).showSnackBar(
+          //           const SnackBar(content: Text('Please select a day first')),
+          //         );
+          //       }
+          //     },
+          //     style: OutlinedButton.styleFrom(
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(10),
+          //       ),
+          //       side: BorderSide(color: Colors.blue),
+          //     ),
+          //     child: const Text(
+          //       'View Appointment Details',
+          //       style: TextStyle(fontSize: 16, color: Colors.blue),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
