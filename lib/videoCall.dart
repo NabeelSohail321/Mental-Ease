@@ -28,6 +28,7 @@ class _callPageState extends State<callPage> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref().child('users');
   String? role;
   bool isSubmitting = false;
+  bool _isEngineInitialized = false;
 
 
   // Position for the floating local video
@@ -80,6 +81,9 @@ class _callPageState extends State<callPage> {
       uid: 0,
       options: const ChannelMediaOptions(),
     );
+    setState(() {
+      _isEngineInitialized = true;
+    });
   }
 
   void _addAgoraEventHandlers() {
@@ -131,6 +135,21 @@ class _callPageState extends State<callPage> {
   }
 
   Widget _viewRows() {
+    if (!_isEngineInitialized || _engine == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text("Initializing video call..."),
+            if (_infoStrings.isNotEmpty)
+              ..._infoStrings.map((info) => Text(info)).toList(),
+          ],
+        ),
+      );
+    }
+
     return Stack(
       children: [
         // Remote video (full screen)

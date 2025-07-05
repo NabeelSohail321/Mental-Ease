@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -21,48 +22,68 @@ class ModelProvider with ChangeNotifier {
   dynamic get predictionResult => _predictionResult;
 
   Future<void> modelPrediction(List<dynamic> inputData) async {
-    // Set loading state
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
-    String? url = dotenv.env['URL'];
 
     try {
-      // Replace with your actual localhost API endpoint
-      String? apiUrl = url; // For Android emulator
-      // const String apiUrl = 'http://localhost:5000/predict'; // For iOS simulator or real device
-      // const String apiUrl = 'http://your-local-ip:5000/predict'; // For testing on real device
-
+      String? apiUrl = dotenv.env['URL'];
+      if (apiUrl == null || apiUrl.isEmpty) {
+        throw Exception('API URL is not configured');
+      }
 
       Map<String, dynamic> map = {
         "features": inputData
       };
+
+      debugPrint('Sending request to: $apiUrl');
+      debugPrint('Request payload: ${jsonEncode(map)}');
+
       final response = await http.post(
-        Uri.parse(apiUrl as String),
+        Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(map),
-      );
+      ).timeout(const Duration(seconds: 30));
+
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        // Successful request
-        _predictionResult = jsonDecode(response.body);
-        print(_predictionResult);
-        dref.push().set({
-          "status": _predictionResult['prediction'],
-          "Uid": uid,
-          "date": DateTime.now().toIso8601String()
-        });
+        final responseBody = jsonDecode(response.body);
+        if (responseBody is! Map<String, dynamic>) {
+          throw Exception('Invalid response format');
+        }
+
+        _predictionResult = responseBody;
+        debugPrint('Prediction result: $_predictionResult');
+
+        // Save to Firebase
+        if (_predictionResult['prediction'] != null) {
+          await dref.push().set({
+            "status": _predictionResult['prediction'],
+            "Uid": uid,
+            "date": DateTime.now().toIso8601String()
+          });
+        } else {
+          throw Exception('Prediction field missing in response');
+        }
       } else {
-        // Handle server errors
-        _errorMessage = 'Failed to get prediction: ${response.statusCode} - ${response.body}';
+        throw Exception('API request failed with status ${response.statusCode}: ${response.body}');
       }
+    } on http.ClientException catch (e) {
+      _errorMessage = 'Network error: ${e.message}';
+      debugPrint('Network error: $e');
+    } on TimeoutException {
+      _errorMessage = 'Request timed out';
+      debugPrint('Request timed out');
+    } on FormatException catch (e) {
+      _errorMessage = 'Invalid response format: ${e.message}';
+      debugPrint('JSON parsing error: $e');
     } catch (e) {
-      // Handle network errors
-      _errorMessage = 'Network error: ${e.toString()}';
+      _errorMessage = 'Error: ${e.toString()}';
+      debugPrint('Unexpected error: $e');
     } finally {
-      // Reset loading state
       _isLoading = false;
       notifyListeners();
     }
-  }
-}
+  }}

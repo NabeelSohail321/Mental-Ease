@@ -276,11 +276,15 @@ class _PhycologistchatscreenState extends State<Phycologistchatscreen> {
                   icon: Icon(Icons.send),
                   onPressed: () async {
                     if (_messageController.text.isNotEmpty) {
+                      final message = _messageController.text;
+                      setState(() {
+                        _messageController.clear();
+                      });
                       await chatProvider.sendMessage(
                         _chatId,
                         widget.senderId,
                         widget.receiverId,
-                        _messageController.text,
+                        message,
                       );
                       _messageController.clear();
                       if (_scrollController.hasClients) {
@@ -349,8 +353,8 @@ Future<void> _sendCallNotification(String senderId, String receiverId, String ch
           'message': {
             'token': receiverToken,
             'notification': {
-              'title': 'Incoming Video Call',
-              'body': 'From $senderName',
+              'title': 'Join Video Session',
+              'body': 'With $senderName',
             },
             'data': {
               'type': 'video_call',

@@ -64,7 +64,7 @@ class _DoctorDetailsScreenState extends State<DoctorDetailsScreen> {
               .toList();
           clinicTiming = data['clinicTiming'] ?? 'Not specified';
           appointmentFee = data['appointmentFee'] ?? 'Not specified';
-          doctorName = data['name'] ?? 'Unknown Doctor';
+          doctorName = data['username'] ?? 'Unknown Doctor';
           doctorSpecialization = data['specialization'] ?? 'General Practitioner';
           isLoading = false;
           ratings = data['ratings'] ?? '0.0';

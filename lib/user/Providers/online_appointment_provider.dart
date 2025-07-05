@@ -81,7 +81,7 @@ class OnlineAppointmentProvider extends ChangeNotifier {
             final doctorSnapshot = await _usersRef.child(appointment.doctorId).get();
             if (doctorSnapshot.exists) {
               final doctorData = doctorSnapshot.value as Map<dynamic, dynamic>;
-              appointment.doctorName = doctorData['name'] ?? 'Unknown Doctor';
+              appointment.doctorName = doctorData['username'] ?? 'Unknown Doctor';
             }
           } catch (e) {
             debugPrint('Error fetching doctor name: $e');

@@ -1,4 +1,4 @@
-const token = '007eJxTYNh6q2iiVpYGq8ijyZ8NblRnbn7yfKH+tpBt7qkRdtaVEw4rMJiYm6ZZphmbGZhYGJqYJZknplpapFoamVimpiUnG1lYBtU6ZDQEMjKc097FysgAgSA+N4Nval5JYo6Ca2JxKgMDAEKOIbo=';
+const token = '007eJxTYOCQLn0ixNZglJO9NLDnnqmr7ofuay7GycWnLGex2+xbIafAYGJummaZZmxmYGJhaGKWZJ6YammRamlkYpmalpxsZGG57WRaRkMgI8OJ9YqsjAwQCOJzM/im5pUk5ii4JhanMjAAAE04H4k=';
 const appId = '475f9f36048146b7ae98e9249efcc289';
 
 String generateChannelId(String currentUserId, String receiverId) {

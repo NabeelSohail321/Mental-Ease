@@ -153,8 +153,9 @@ class _ForgetPasswordState extends State<ForgetPassword> {
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
-                        'Send Reset Link',
+                        'Send Reset Password Link',
                         style: TextStyle(
+                          color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),

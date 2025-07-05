@@ -12,7 +12,8 @@ class RescheduleProvider extends ChangeNotifier {
   final DatabaseReference _usersRef = FirebaseDatabase.instance.ref().child('users');
   List<Map<String, dynamic>> _rescheduleRequests = [];
   bool _isLoading = false;
-
+  bool _isRescheduling = false;
+  bool get isRescheduling => _isRescheduling;
   List<Map<String, dynamic>> get rescheduleRequests => _rescheduleRequests;
   bool get isLoading => _isLoading;
 
@@ -67,6 +68,9 @@ class RescheduleProvider extends ChangeNotifier {
     required String patientName,
   }) async {
     try {
+      _isRescheduling = true;
+      notifyListeners();
+
       final currentUserId = FirebaseAuth.instance.currentUser?.uid;
       if (currentUserId == null) throw Exception('User not authenticated');
 
@@ -117,28 +121,31 @@ class RescheduleProvider extends ChangeNotifier {
       final doctorData = Map<String, dynamic>.from(doctorSnapshot.value as Map);
       final onlineSlots = doctorData['onlineTimeSlots'] as Map<dynamic, dynamic>? ?? {};
 
-      // Check if the new date is after the latest available date in onlineTimeSlots
-      final availableDates = onlineSlots.keys.where((key) => key is String).map((key) => key.toString()).toList();
-      // print(availableDates);
-      // if (availableDates.isEmpty) {
-      //   throw Exception('No available slots found');
-      // }
-
-      // Parse all available dates and find the latest one
-      final latestAvailableDate = availableDates.map((dateStr) {
-        try {
-          return DateFormat('yyyy-MM-dd').parse(dateStr);
-        } catch (e) {
-          return DateTime(0); // Return minimal date if parsing fails
-        }
-      }).reduce((a, b) => a.isAfter(b) ? a : b);
-      print(latestAvailableDate);
+      // Get all available dates
+      final availableDates = onlineSlots.keys
+          .where((key) => key is String)
+          .map((key) => key.toString())
+          .toList();
 
       // Parse the new appointment date
       final newAppointmentDate = DateFormat('yyyy-MM-dd').parse(newDate);
 
-      // Check if the new date is after the latest available date
-      if (newAppointmentDate.isBefore(latestAvailableDate)||newAppointmentDate.isAtSameMomentAs(latestAvailableDate)) {
+      // Find the latest available date if any exist
+      DateTime? latestAvailableDate;
+      if (availableDates.isNotEmpty) {
+        try {
+          latestAvailableDate = availableDates
+              .map((dateStr) => DateFormat('yyyy-MM-dd').parse(dateStr))
+              .reduce((a, b) => a.isAfter(b) ? a : b);
+        } catch (e) {
+          debugPrint('Error parsing available dates: $e');
+        }
+      }
+
+      // Check if the new date is valid
+      if (latestAvailableDate != null &&
+          (newAppointmentDate.isBefore(latestAvailableDate) ||
+              newAppointmentDate.isAtSameMomentAs(latestAvailableDate))) {
         throw Exception('Selected date must be after ${DateFormat('yyyy-MM-dd').format(latestAvailableDate)}');
       }
 
@@ -150,19 +157,6 @@ class RescheduleProvider extends ChangeNotifier {
             (key) => key.toString() == formattedDate,
         orElse: () => '',
       );
-
-      // if (dateKey == '') {
-      //   throw Exception('No available slots for selected date');
-      // }
-
-      final slotsForDate = (onlineSlots[dateKey] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-
-      // Format the time to match exactly how it's stored (e.g., "09:00" vs "9:0")
-      final formattedTime = _formatTimeForComparison(newTime);
-
-      // if (!slotsForDate.any((slot) => _formatTimeForComparison(slot) == formattedTime)) {
-      //   throw Exception('Selected time slot is not available for booking');
-      // }
 
       // Update the appointment
       await _dbRef.child('online_Appointments').child(appointmentId).update({
@@ -186,6 +180,9 @@ class RescheduleProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error updating appointment time: $e');
       rethrow;
+    } finally {
+      _isRescheduling = false;
+      notifyListeners();
     }
   }
 

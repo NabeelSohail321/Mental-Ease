@@ -94,7 +94,7 @@ class _MyAppState extends State<MyApp> {
       child: MaterialApp(
         navigatorKey: navigatorKey,
         theme: ThemeData(
-          fontFamily: "CustomFont", // Apply font globally
+          // fontFamily: "CustomFont", // Apply font globally
         ),
         debugShowCheckedModeBanner: false,
         home: SplachScreen(),

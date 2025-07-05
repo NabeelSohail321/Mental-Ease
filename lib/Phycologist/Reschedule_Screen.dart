@@ -80,11 +80,14 @@ class _DoctorRescheduleRequestsScreenState extends State<DoctorRescheduleRequest
       return;
     }
 
+    final provider = Provider.of<RescheduleProvider>(context, listen: false);
+    if (provider.isRescheduling) return; // Prevent multiple taps
+
     final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate!);
     final formattedTime = '${_selectedTime!.hour}:${_selectedTime!.minute}';
 
     try {
-      await Provider.of<RescheduleProvider>(context, listen: false).updateAppointmentTime(
+      await provider.updateAppointmentTime(
         appointmentId: appointmentId,
         newDate: formattedDate,
         newTime: formattedTime,
@@ -246,56 +249,73 @@ class _DoctorRescheduleRequestsScreenState extends State<DoctorRescheduleRequest
   }
 
   Widget _buildDateTimeSelector(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.all(16),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text(
-              'Select new appointment time',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            Row(
+    return Consumer<RescheduleProvider>(
+      builder: (context, provider, child) {
+        return Card(
+          margin: EdgeInsets.all(16),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _selectDate(context),
-                    child: Text(
-                      _selectedDate != null
-                          ? DateFormat('MMM dd, yyyy').format(_selectedDate!)
-                          : 'Select Date',
-                    ),
-                  ),
+                Text(
+                  'Select new appointment time',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _selectedDate != null ? () => _selectTime(context) : null,
-                    child: Text(
-                      _selectedTime != null
-                          ? _selectedTime!.format(context)
-                          : 'Select Time',
+                SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: provider.isRescheduling ? null : () => _selectDate(context),
+                        child: Text(
+                          _selectedDate != null
+                              ? DateFormat('MMM dd, yyyy').format(_selectedDate!)
+                              : 'Select Date',
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: provider.isRescheduling || _selectedDate == null
+                            ? null
+                            : () => _selectTime(context),
+                        child: Text(
+                          _selectedTime != null
+                              ? _selectedTime!.format(context)
+                              : 'Select Time',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: provider.isRescheduling
+                      ? null
+                      : () => _confirmReschedule(context, _selectedAppointmentId!),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
+                  child: provider.isRescheduling
+                      ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                      : Text('Confirm Reschedule'),
                 ),
               ],
             ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _confirmReschedule(context, _selectedAppointmentId!),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text('Confirm Reschedule'),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

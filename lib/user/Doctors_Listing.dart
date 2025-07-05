@@ -192,7 +192,7 @@ class _DoctorsListingState extends State<DoctorsListing> {
                                   TextSpan(
                                     text: "Doctor",
                                     style: TextStyle(
-                                      fontFamily: "CustomFont",
+                                      // fontFamily: "CustomFont",
                                       color: Colors.black,
                                       fontSize: screenHeight * 0.035,
                                       fontWeight: FontWeight.bold,
@@ -283,7 +283,7 @@ class _DoctorsListingState extends State<DoctorsListing> {
                     final searchList = _showFavorites ? _displayedDoctors : _allDoctors;
                     _displayedDoctors = searchList
                         .where((doctor) =>
-                        doctor['name'].toLowerCase().contains(_searchController.text.toLowerCase()))
+                        doctor['username'].toLowerCase().contains(_searchController.text.toLowerCase()))
                         .toList();
                   }
 
@@ -323,7 +323,7 @@ class _DoctorsListingState extends State<DoctorsListing> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Doctor's Image
+                                  // Doctor's ImageA
                                   Stack(
                                     children: [
                                       Container(
@@ -369,7 +369,7 @@ class _DoctorsListingState extends State<DoctorsListing> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          doctor['name'] ?? 'Unknown',
+                                          doctor['username'] ?? 'Unknown',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: screenWidth * 0.04,
